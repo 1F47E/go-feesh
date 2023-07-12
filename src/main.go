@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-btc-scan/src/entity"
+	"go-btc-scan/src/entity/peer"
 	entity_tx "go-btc-scan/src/entity/tx"
 	"io/ioutil"
 	"log"
@@ -43,17 +44,10 @@ type RPCRequest struct {
 	}
 */
 type RPCResponse struct {
-	Jsonrpc string `json:"jsonrpc"`
-	// Result  json.RawMessage `json:"result"`
-	Result interface{} `json:"result"`
-	Error  interface{} `json:"error"`
+	Jsonrpc string      `json:"jsonrpc"`
+	Result  interface{} `json:"result"`
+	Error   interface{} `json:"error"`
 }
-
-// type RPCStringResponse struct {
-// 	Jsonrpc string      `json:"jsonrpc"`
-// 	Result  string      `json:"result"`
-// 	Error   interface{} `json:"error"`
-// }
 
 func NewRPCRequest(method string, params interface{}) *RPCRequest {
 	return &RPCRequest{
@@ -116,8 +110,6 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 		return nil, err
 	}
 
-	// log.Printf("HTTP CLIENT response: %s\n", data)
-
 	var ret RPCResponse
 	err = json.Unmarshal(data, &ret)
 
@@ -127,7 +119,6 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 
 	msg += " OK"
 	log.Println(msg)
-	// log.Printf("HTTP CLIENT response RPCResponse result json: %s\n", ret.Result)
 	return &ret, nil
 }
 
@@ -227,7 +218,6 @@ func (c *Client) transactionGet(txid string) (string, error) {
 	if err != nil {
 		log.Fatalln("error doing request:", err)
 	}
-	// fmt.Printf("=== transactionGet Result: %v, type: %T\n", data.Result, data.Result)
 	// check type of result is string
 	if _, ok := data.Result.(string); !ok {
 		return "", fmt.Errorf("unexpected type for result")
@@ -259,8 +249,34 @@ func (c *Client) transactionDecode(txdata string) (*entity_tx.Transaction, error
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
 	}
-	// log.Printf("transaction: %+v\n", resp)
 	return &resp, nil
+}
+
+// get peer info
+// curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getpeerinfo","params":[],"id":1}' http://localhost:18334
+func (c *Client) getPeers() ([]*peer.Peer, error) {
+	fmt.Println("=== getPeers")
+	r := NewRPCRequest("getpeerinfo", []interface{}{})
+	data, err := c.doRequest(r)
+	if err != nil {
+		return nil, fmt.Errorf("error doing request: %v", err)
+	}
+	// check type of Result
+	if _, ok := data.Result.([]interface{}); !ok {
+		return nil, fmt.Errorf("unexpected type for result")
+	}
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling back to raw JSON: %v", err)
+	}
+	// parse into struct
+	var resp []*peer.Peer
+	err = json.Unmarshal(rawJson, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling response: %v", err)
+	}
+	return resp, nil
 }
 
 func main() {
@@ -276,23 +292,27 @@ func main() {
 		log.Fatalln("error creating client:", err)
 	}
 
+	// get node info
 	err = cli.getInfo()
 	if err != nil {
 		log.Fatalln("error on getinfo:", err)
 	}
+
+	// get raw mempool
 	err = cli.rawMempool()
 	if err != nil {
 		log.Fatalln("error on rawmempool:", err)
 	}
 
+	// get block
 	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
 	err = cli.getBlock(blockHash)
 	if err != nil {
 		log.Fatalln("error on getblock:", err)
 	}
 
-	txHash := "6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"
 	// get raw tx
+	txHash := "6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"
 	txData, err := cli.transactionGet(txHash)
 	if err != nil {
 		log.Fatalln("error on gettransaction:", err)
@@ -304,6 +324,15 @@ func main() {
 	}
 	printStruct(tx)
 
+	// get peers
+	peers, err := cli.getPeers()
+	if err != nil {
+		log.Fatalln("error on getpeerinfo:", err)
+	}
+	log.Println("Peers:")
+	for _, p := range peers {
+		log.Println(p.Addr)
+	}
 }
 
 // ==== UTILS
