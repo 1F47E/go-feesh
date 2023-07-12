@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-btc-scan/src/entity"
+	entity_tx "go-btc-scan/src/entity/tx"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 )
 
@@ -41,10 +43,17 @@ type RPCRequest struct {
 	}
 */
 type RPCResponse struct {
-	Jsonrpc string          `json:"jsonrpc"`
-	Result  json.RawMessage `json:"result"`
-	Error   interface{}     `json:"error"`
+	Jsonrpc string `json:"jsonrpc"`
+	// Result  json.RawMessage `json:"result"`
+	Result interface{} `json:"result"`
+	Error  interface{} `json:"error"`
 }
+
+// type RPCStringResponse struct {
+// 	Jsonrpc string      `json:"jsonrpc"`
+// 	Result  string      `json:"result"`
+// 	Error   interface{} `json:"error"`
+// }
 
 func NewRPCRequest(method string, params interface{}) *RPCRequest {
 	return &RPCRequest{
@@ -78,6 +87,8 @@ func NewClient(host, user, password string) (*Client, error) {
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
+	msg := fmt.Sprintf("====== HTTP CLIENT cmd %s : %s", r.Method, r.Params)
+	log.Println("\n\n", msg)
 	jr, err := json.Marshal(r)
 	if err != nil {
 		return nil, err
@@ -114,8 +125,9 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 		log.Fatalln("error unmarshalling response:", err)
 	}
 
-	log.Println("HTTP CLIENT response RPCResponse OK")
-	log.Printf("HTTP CLIENT response RPCResponse result json: %s\n", ret.Result)
+	msg += " OK"
+	log.Println(msg)
+	// log.Printf("HTTP CLIENT response RPCResponse result json: %s\n", ret.Result)
 	return &ret, nil
 }
 
@@ -125,14 +137,27 @@ func (c *Client) getInfo() error {
 	r := NewRPCRequest("getinfo", []interface{}{})
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Fatalln("error doing request:", err)
+		return err
 	}
+
+	// check type of result
+	if _, ok := data.Result.(map[string]interface{}); !ok {
+		return fmt.Errorf("unexpected type for result")
+	}
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+	}
+
+	// parse into struct
 	var info entity.ResponseGetinfo
-	err = json.Unmarshal(data.Result, &info)
+	err = json.Unmarshal(rawJson, &info)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
+		return err
 	}
-	log.Printf("getinfo response: %+v\n", info)
+	printStruct(info)
 	return nil
 }
 
@@ -144,12 +169,22 @@ func (c *Client) rawMempool() error {
 	if err != nil {
 		log.Fatalln("error doing request:", err)
 	}
-	// resp := make(map[string]MemPoolTx)
+	// check type of result
+	if _, ok := data.Result.(map[string]interface{}); !ok {
+		return fmt.Errorf("unexpected type for result")
+	}
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+	}
+
 	var resp map[string]entity.MemPoolTx
-	err = json.Unmarshal(data.Result, &resp)
+	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
 	}
+
 	log.Printf("raw mempool transactions found %d\n", len(resp))
 	for k, v := range resp {
 		log.Printf("txid: %s, fee: %f\n", k, v.Fee)
@@ -163,13 +198,69 @@ func (c *Client) getBlock(blockHash string) error {
 	if err != nil {
 		log.Fatalln("error doing request:", err)
 	}
+	// check type of result
+	if _, ok := data.Result.(map[string]interface{}); !ok {
+		return fmt.Errorf("unexpected type for result")
+	}
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+	}
+
+	// parse into struct
 	var resp entity.Block
-	err = json.Unmarshal(data.Result, &resp)
+	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
 	}
-	log.Printf("block: %+v\n", resp)
+	printStruct(resp)
 	return nil
+}
+
+// get transaction
+// curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawtransaction","params":["6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"],"id":1}' http://localhost:18334
+func (c *Client) transactionGet(txid string) (string, error) {
+	fmt.Println("=== transactionGet")
+	r := NewRPCRequest("getrawtransaction", []interface{}{txid})
+	data, err := c.doRequest(r)
+	if err != nil {
+		log.Fatalln("error doing request:", err)
+	}
+	// fmt.Printf("=== transactionGet Result: %v, type: %T\n", data.Result, data.Result)
+	// check type of result is string
+	if _, ok := data.Result.(string); !ok {
+		return "", fmt.Errorf("unexpected type for result")
+	}
+	return data.Result.(string), nil
+}
+
+// decode raw transaction
+func (c *Client) transactionDecode(txdata string) (*entity_tx.Transaction, error) {
+	fmt.Println("=== transactionDecode")
+	r := NewRPCRequest("decoderawtransaction", []interface{}{txdata})
+	data, err := c.doRequest(r)
+	if err != nil {
+		log.Fatalln("error doing request:", err)
+	}
+	// check type of result
+	if _, ok := data.Result.(map[string]interface{}); !ok {
+		return nil, fmt.Errorf("unexpected type for result")
+	}
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+	}
+
+	// parse into struct
+	var resp entity_tx.Transaction
+	err = json.Unmarshal(rawJson, &resp)
+	if err != nil {
+		log.Fatalln("error unmarshalling response:", err)
+	}
+	// log.Printf("transaction: %+v\n", resp)
+	return &resp, nil
 }
 
 func main() {
@@ -198,5 +289,51 @@ func main() {
 	err = cli.getBlock(blockHash)
 	if err != nil {
 		log.Fatalln("error on getblock:", err)
+	}
+
+	txHash := "6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"
+	// get raw tx
+	txData, err := cli.transactionGet(txHash)
+	if err != nil {
+		log.Fatalln("error on gettransaction:", err)
+	}
+	// decode tx
+	tx, err := cli.transactionDecode(txData)
+	if err != nil {
+		log.Fatalln("error on decoderawtransaction:", err)
+	}
+	printStruct(tx)
+
+}
+
+// ==== UTILS
+func printStruct(s interface{}) {
+	utilsPrintStruct(s, "")
+}
+
+// iterate over tx and print all fields
+func utilsPrintStruct(s interface{}, indent string) {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		fmt.Println("printStruct only accepts structs; got", v.Kind())
+		return
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fmt.Printf("\n%s%s\n", indent, v.Type().Field(i).Name)
+		field := v.Field(i)
+
+		// If this is a nested struct, call the function recursively
+		if field.Kind() == reflect.Struct {
+			utilsPrintStruct(field.Interface(), indent+"  ")
+		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+			utilsPrintStruct(field.Interface(), indent+"  ")
+		} else {
+			// This is not a nested struct, so just print the value
+			fmt.Println(field.Interface())
+		}
 	}
 }
