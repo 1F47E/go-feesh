@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-btc-scan/src/pkg/entity"
+	"go-btc-scan/src/pkg/entity/block"
+	"go-btc-scan/src/pkg/entity/info"
+	"go-btc-scan/src/pkg/entity/mempool"
 	"go-btc-scan/src/pkg/entity/peer"
 	"go-btc-scan/src/pkg/entity/tx"
 	"go-btc-scan/src/pkg/utils"
@@ -141,7 +143,7 @@ func (c *Client) GetInfo() error {
 	}
 
 	// parse into struct
-	var info entity.ResponseGetinfo
+	var info info.ResponseGetinfo
 	err = json.Unmarshal(rawJson, &info)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
@@ -169,7 +171,7 @@ func (c *Client) RawMempool() error {
 		log.Fatalf("Error marshalling back to raw JSON: %v", err)
 	}
 
-	var resp map[string]entity.MemPoolTx
+	var resp map[string]mempool.MemPoolTx
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
@@ -199,7 +201,7 @@ func (c *Client) GetBlock(blockHash string) error {
 	}
 
 	// parse into struct
-	var resp entity.Block
+	var resp block.Block
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
