@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"go-btc-scan/src/entity"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -43,34 +46,6 @@ type RPCResponse struct {
 	Error   interface{}     `json:"error"`
 }
 
-/*
-{
-  "version": 230300,
-  "protocolversion": 70002,
-  "blocks": 2441415,
-  "timeoffset": 0,
-  "connections": 8,
-  "proxy": "",
-  "difficulty": 1,
-  "testnet": true,
-  "relayfee": 0.00001,
-  "errors": ""
-}
-*/
-
-type ResponseGetinfo struct {
-	Version         int     `json:"version"`
-	ProtocolVersion int     `json:"protocolversion"`
-	Blocks          int     `json:"blocks"`
-	Timeoffset      int     `json:"timeoffset"`
-	Connections     int     `json:"connections"`
-	Proxy           string  `json:"proxy"`
-	Difficulty      float64 `json:"difficulty"`
-	Testnet         bool    `json:"testnet"`
-	Relayfee        float64 `json:"relayfee"`
-	Errors          string  `json:"errors"`
-}
-
 func NewRPCRequest(method string, params interface{}) *RPCRequest {
 	return &RPCRequest{
 		Jsonrpc: "1.0",
@@ -80,65 +55,26 @@ func NewRPCRequest(method string, params interface{}) *RPCRequest {
 	}
 }
 
-// RAW MEMPOOL RESPONSE
-/*
-{
-  "e335aa60ffb1462f8c15c6b3322d97294f9b65c8701c658b45325003b94a55e2": {
-    "size": 222,
-    "vsize": 141,
-    "weight": 561,
-    "fee": 0.00000144,
-    "time": 1689116517,
-    "height": 2441417,
-    "startingpriority": 2788259.8453038675,
-    "currentpriority": 5576519.690607735,
-    "depends": []
-  },
-{
-  "e335aa60ffb1462f8c15c6b3322d97294f9b65c8701c658b45325003b94a55e2": {
-    "size": 222,
-    "vsize": 141,
-    "weight": 561,
-    "fee": 0.00000144,
-    "time": 1689116517,
-    "height": 2441417,
-    "startingpriority": 2788259.8453038675,
-    "currentpriority": 5576519.690607735,
-    "depends": []
-  }
-}
-}
-*/
-
-type MemPoolTx struct {
-	Size             int     `json:"size"`
-	Vsize            int     `json:"vsize"`
-	Weight           int     `json:"weight"`
-	Fee              float64 `json:"fee"`
-	Time             int     `json:"time"`
-	Height           int     `json:"height"`
-	Startingpriority float64 `json:"startingpriority"`
-	Currentpriority  float64 `json:"currentpriority"`
-	// Depends          []int   `json:"depends"`
-}
-
 // ===== CLIENT
 type Client struct {
 	client   *http.Client
-	url      string
+	host     string
 	user     string
 	password string
 }
 
-func NewClient(url, user, password string) *Client {
+func NewClient(host, user, password string) (*Client, error) {
+	if host == "" || user == "" || password == "" {
+		return nil, fmt.Errorf("RPC_HOST, RPC_USER and RPC_PASSWORD env vars must be set")
+	}
 	return &Client{
 		client: &http.Client{
 			Timeout: time.Second * 5,
 		},
-		url:      url,
+		host:     host,
 		user:     user,
 		password: password,
-	}
+	}, nil
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
@@ -148,7 +84,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	}
 	bodyReader := bytes.NewReader(jr)
 
-	req, err := http.NewRequest(http.MethodPost, c.url, bodyReader)
+	req, err := http.NewRequest(http.MethodPost, c.host, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +127,7 @@ func (c *Client) getInfo() error {
 	if err != nil {
 		log.Fatalln("error doing request:", err)
 	}
-	var info ResponseGetinfo
+	var info entity.ResponseGetinfo
 	err = json.Unmarshal(data.Result, &info)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
@@ -209,7 +145,7 @@ func (c *Client) rawMempool() error {
 		log.Fatalln("error doing request:", err)
 	}
 	// resp := make(map[string]MemPoolTx)
-	var resp map[string]MemPoolTx
+	var resp map[string]entity.MemPoolTx
 	err = json.Unmarshal(data.Result, &resp)
 	if err != nil {
 		log.Fatalln("error unmarshalling response:", err)
@@ -221,18 +157,46 @@ func (c *Client) rawMempool() error {
 	return nil
 }
 
-func main() {
-	nodeUrl := "http://localhost:18334"
-	username := "rpcuser"
-	password := "rpcpass"
-	c := NewClient(nodeUrl, username, password)
+func (c *Client) getBlock(blockHash string) error {
+	r := NewRPCRequest("getblock", []interface{}{blockHash})
+	data, err := c.doRequest(r)
+	if err != nil {
+		log.Fatalln("error doing request:", err)
+	}
+	var resp entity.Block
+	err = json.Unmarshal(data.Result, &resp)
+	if err != nil {
+		log.Fatalln("error unmarshalling response:", err)
+	}
+	log.Printf("block: %+v\n", resp)
+	return nil
+}
 
-	err := c.getInfo()
+func main() {
+	var err error
+	// get vars from env
+	// TODO: move to config
+	nodeUrl := os.Getenv("RPC_HOST")
+	username := os.Getenv("RPC_USER")
+	password := os.Getenv("RPC_PASSWORD")
+
+	cli, err := NewClient(nodeUrl, username, password)
+	if err != nil {
+		log.Fatalln("error creating client:", err)
+	}
+
+	err = cli.getInfo()
 	if err != nil {
 		log.Fatalln("error on getinfo:", err)
 	}
-	err = c.rawMempool()
+	err = cli.rawMempool()
 	if err != nil {
 		log.Fatalln("error on rawmempool:", err)
+	}
+
+	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
+	err = cli.getBlock(blockHash)
+	if err != nil {
+		log.Fatalln("error on getblock:", err)
 	}
 }
