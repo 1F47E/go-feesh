@@ -82,8 +82,7 @@ func NewClient(host, user, password string) (*Client, error) {
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
-	msg := fmt.Sprintf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
-	log.Println("\n\n", msg)
+	// log.Printf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
 	jr, err := json.Marshal(r)
 	if err != nil {
 		return nil, err
@@ -115,11 +114,9 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	err = json.Unmarshal(data, &ret)
 
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		return nil, err
 	}
 
-	msg += " OK"
-	log.Println(msg)
 	return &ret, nil
 }
 
@@ -169,24 +166,12 @@ func (c *Client) RawMempool() ([]string, error) {
 		}
 		ret = append(ret, v.(string))
 	}
-	// if _, ok := data.Result.([]string); !ok {
-	// 	return nil, fmt.Errorf("unexpected type for result")
-	// }
 	return ret, nil
-	// // parse into []string
-	// var resp []string
-	// // err = json.Unmarshal([]byte(data.Result.(string)), &resp)
-	// err = json.Unmarshal(data.Result, &resp)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Printf("raw mempool transactions found %d\n", len(resp))
-	// return resp, nil
 }
 
 // rawmempool request extended
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[true],"id":1}' http://localhost:18334
-func (c *Client) RawMempoolExtended() error {
+func (c *Client) RawMempoolExtended() ([]mempool.MemPoolTx, error) {
 	// extended
 	r := NewRPCRequest("getrawmempool", []interface{}{true})
 	data, err := c.doRequest(r)
@@ -195,25 +180,28 @@ func (c *Client) RawMempoolExtended() error {
 	}
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
-		return fmt.Errorf("unexpected type for result")
+		return nil, fmt.Errorf("unexpected type for result")
 	}
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+		return nil, err
 	}
 
 	var resp map[string]mempool.MemPoolTx
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		return nil, err
 	}
 
+	res := make([]mempool.MemPoolTx, 0)
 	log.Printf("raw mempool transactions found %d\n", len(resp))
 	for k, v := range resp {
-		log.Printf("txid: %s, fee: %f\n", k, v.Fee)
+		v.Hash = k
+		// log.Printf("txid: %s, fee: %f\n", k, v.Fee)
+		res = append(res, v)
 	}
-	return nil
+	return res, nil
 }
 
 func (c *Client) GetBlock(blockHash string) error {
@@ -244,18 +232,34 @@ func (c *Client) GetBlock(blockHash string) error {
 
 // get transaction
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawtransaction","params":["6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"],"id":1}' http://localhost:18334
-func (c *Client) TransactionGet(txid string) (string, error) {
+func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	fmt.Println("=== transactionGet")
-	r := NewRPCRequest("getrawtransaction", []interface{}{txid})
+	p1 := []interface{}{txid}
+	p2 := []interface{}{1}
+	params := append(p1, p2...)
+
+	r := NewRPCRequest("getrawtransaction", params)
 	data, err := c.doRequest(r)
 	if err != nil {
 		log.Fatalln("error doing request:", err)
 	}
 	// check type of result is string
-	if _, ok := data.Result.(string); !ok {
-		return "", fmt.Errorf("unexpected type for result")
+	if _, ok := data.Result.(map[string]interface{}); !ok {
+		return nil, fmt.Errorf("unexpected type for result")
 	}
-	return data.Result.(string), nil
+	// Convert back to raw JSON
+	rawJson, err := json.Marshal(data.Result)
+	if err != nil {
+		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+	}
+
+	// parse into struct
+	var resp tx.Transaction
+	err = json.Unmarshal(rawJson, &resp)
+	if err != nil {
+		log.Fatalln("error unmarshalling response:", err)
+	}
+	return &resp, nil
 }
 
 // decode raw transaction

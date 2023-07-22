@@ -31,6 +31,7 @@ package mempool
 */
 
 type MemPoolTx struct {
+	Hash             string  `json:"hash"`
 	Size             int     `json:"size"`
 	Vsize            int     `json:"vsize"`
 	Weight           int     `json:"weight"`
@@ -43,5 +44,4 @@ type MemPoolTx struct {
 }
 
 type MemPoolTxList struct {
-  
 }
