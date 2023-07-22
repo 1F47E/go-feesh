@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/btcsuite/btcd/btcutil"
 )
 
 var cli *client.Client
@@ -22,7 +24,21 @@ func init() {
 		log.Fatalln("error creating client:", err)
 	}
 }
+
 func main() {
+	// get current block height
+
+	// get node info
+	err := cli.GetInfo()
+	if err != nil {
+		log.Fatalln("error on getinfo:", err)
+	}
+
+	// get last block hash
+
+}
+
+func debugParseMempool() {
 
 	// debug calc mempool fee demo
 	mu := &sync.Mutex{}
@@ -75,7 +91,9 @@ func main() {
 						tx.AmountIn = in
 						tx.AmountOut = out
 						// report
-						log.Printf("tx %s in: %d, out: %d\n", tx.Hash, tx.AmountIn, tx.AmountOut)
+						inBtc := btcutil.Amount(in)
+						outBtc := btcutil.Amount(out)
+						log.Printf("tx %s in: %s, out: %s\n", tx.Hash, inBtc.String(), outBtc.String())
 					}
 				}
 				mu.Unlock()
@@ -100,7 +118,10 @@ func main() {
 			}
 		}
 		if cnt != poolGoodCnt {
-			log.Printf("total in: %d, total out: %d, fee: %d\n", totalIn, totalOut, fee)
+			totalInBtc := btcutil.Amount(totalIn)
+			totalOutBtc := btcutil.Amount(totalOut)
+			feeBtc := btcutil.Amount(fee)
+			log.Printf("total in: %s, out: %s, fee: %s\n", totalInBtc.String(), totalOutBtc.String(), feeBtc.String())
 		}
 		cnt = len(pool)
 		mu.Unlock()
