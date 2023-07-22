@@ -17,7 +17,7 @@ package info
 }
 */
 
-type ResponseGetinfo struct {
+type Info struct {
 	Version         int     `json:"version"`
 	ProtocolVersion int     `json:"protocolversion"`
 	Blocks          int     `json:"blocks"`

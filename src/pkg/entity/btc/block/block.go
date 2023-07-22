@@ -36,7 +36,7 @@ type Block struct {
 	Version           int      `json:"version"`
 	VersionHex        string   `json:"versionHex"`
 	Merkleroot        string   `json:"merkleroot"`
-	Tx                []string `json:"tx"`
+	Transactions      []string `json:"tx"`
 	Time              int      `json:"time"`
 	Nonce             int      `json:"nonce"`
 	Bits              string   `json:"bits"`

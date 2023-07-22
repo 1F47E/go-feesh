@@ -2,7 +2,8 @@ package main
 
 import (
 	"go-btc-scan/src/pkg/client"
-	"go-btc-scan/src/pkg/entity/txpool"
+	mblock "go-btc-scan/src/pkg/entity/models/block"
+	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"go-btc-scan/src/pkg/utils"
 	"log"
 	"os"
@@ -29,12 +30,59 @@ func main() {
 	// get current block height
 
 	// get node info
-	err := cli.GetInfo()
+	info, err := cli.GetInfo()
 	if err != nil {
 		log.Fatalln("error on getinfo:", err)
 	}
+	log.Printf("node info: %+v\n", info)
 
 	// get last block hash
+	bestBlock, err := cli.GetBestBlock()
+	if err != nil {
+		log.Fatalln("error on getbestblock:", err)
+	}
+	log.Println("last block hash:", bestBlock.Hash)
+
+	b, err := cli.GetBlock(bestBlock.Hash)
+	if err != nil {
+		log.Fatalln("error on getblock:", err)
+	}
+	log.Println("block tx cnt:", len(b.Transactions))
+
+	// parse block tx, calc value and fee
+	// txs := make([]*txpool.TxPool, len(b.Transactions))
+	var totalValue, totalFee uint64
+	for _, txid := range b.Transactions {
+		in, out := getTxAmounts(txid)
+		tx := &mtx.Tx{
+			Hash:      txid,
+			AmountIn:  in,
+			AmountOut: out,
+		}
+		totalValue += in
+		totalFee += tx.Fee()
+		// txs[i] = tx
+	}
+	wBlock := &mblock.Block{
+		Hash:   b.Hash,
+		Height: b.Height,
+		Value:  totalValue,
+		Fee:    totalFee,
+	}
+	log.Printf("block %d, value: %s, fee: %s\n", wBlock.Height, wBlock.ValueString(), wBlock.FeeString())
+
+	// get block header
+	// header, err := cli.GetBlockHeader(bestBlock.Hash)
+	// if err != nil {
+	// 	log.Fatalln("error on getblockheader:", err)
+	// }
+	// log.Println("prev block hash:", header.Previousblockhash)
+	// // get full block data (tx list)
+	// b, err := cli.GetBlock(bestBlock.Hash)
+	// if err != nil {
+	// 	log.Fatalln("error on getblock:", err)
+	// }
+	// log.Println("block tx cnt:", len(b.Transactions))
 
 }
 
@@ -42,7 +90,7 @@ func debugParseMempool() {
 
 	// debug calc mempool fee demo
 	mu := &sync.Mutex{}
-	pool := make(map[string]*txpool.TxPool)
+	pool := make(map[string]*mtx.Tx)
 	cnt := 0
 
 	go func() {
@@ -65,7 +113,7 @@ func debugParseMempool() {
 				mu.Lock()
 				for _, tx := range txs {
 					if _, ok := pool[tx]; !ok {
-						pool[tx] = &txpool.TxPool{
+						pool[tx] = &mtx.Tx{
 							Hash: tx,
 						}
 					}
@@ -130,6 +178,10 @@ func debugParseMempool() {
 }
 
 func getTxAmounts(txid string) (uint64, uint64) {
+	if len(txid) != 64 {
+		log.Fatalln("getTxAmounts invalid txid:", txid)
+	}
+	// txidparam := string(t)
 	tx, err := cli.TransactionGet(txid)
 	if err != nil {
 		log.Fatalln("error on gettransaction:", err)
@@ -137,6 +189,10 @@ func getTxAmounts(txid string) (uint64, uint64) {
 	// ===== find out amount from vin tx matching by vout index
 	var in uint64
 	for _, vin := range tx.Vin {
+		// mined
+		if vin.Coinbase != "" {
+			continue
+		}
 		txIn, err := cli.TransactionGet(vin.Txid)
 		if err != nil {
 			log.Fatalln("error on gettransaction:", err)
@@ -163,17 +219,19 @@ func debug() {
 	var err error
 
 	// get node info
-	err = cli.GetInfo()
+	info, err := cli.GetInfo()
 	if err != nil {
 		log.Fatalln("error on getinfo:", err)
 	}
+	log.Printf("node info: %+v\n", info)
 
 	// get block
 	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
-	err = cli.GetBlock(blockHash)
+	b, err := cli.GetBlock(blockHash)
 	if err != nil {
 		log.Fatalln("error on getblock:", err)
 	}
+	log.Printf("block %s tx cnt: %d\n", blockHash, len(b.Transactions))
 
 	// get raw tx
 	txHash := "6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"

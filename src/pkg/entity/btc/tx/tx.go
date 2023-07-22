@@ -104,6 +104,7 @@ type Vin struct {
 	ScriptSig   ScriptSig `json:"scriptSig"`
 	Txinwitness []string  `json:"txinwitness"`
 	Sequence    uint64    `json:"sequence"`
+	Coinbase    string    `json:"coinbase"`
 }
 
 type ScriptSig struct {
