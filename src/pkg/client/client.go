@@ -82,7 +82,7 @@ func NewClient(host, user, password string) (*Client, error) {
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
-	msg := fmt.Sprintf("====== HTTP CLIENT cmd %s : %s", r.Method, r.Params)
+	msg := fmt.Sprintf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
 	log.Println("\n\n", msg)
 	jr, err := json.Marshal(r)
 	if err != nil {
@@ -153,9 +153,41 @@ func (c *Client) GetInfo() error {
 	return nil
 }
 
-// rawmempool request
+// rawmempool request list of tx
+// curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[],"id":1}' http://localhost:18334
+func (c *Client) RawMempool() ([]string, error) {
+	r := NewRPCRequest("getrawmempool", []interface{}{})
+	data, err := c.doRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	// check type of result
+	ret := make([]string, 0)
+	for _, v := range data.Result.([]interface{}) {
+		if _, ok := v.(string); !ok {
+			continue
+		}
+		ret = append(ret, v.(string))
+	}
+	// if _, ok := data.Result.([]string); !ok {
+	// 	return nil, fmt.Errorf("unexpected type for result")
+	// }
+	return ret, nil
+	// // parse into []string
+	// var resp []string
+	// // err = json.Unmarshal([]byte(data.Result.(string)), &resp)
+	// err = json.Unmarshal(data.Result, &resp)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.Printf("raw mempool transactions found %d\n", len(resp))
+	// return resp, nil
+}
+
+// rawmempool request extended
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[true],"id":1}' http://localhost:18334
-func (c *Client) RawMempool() error {
+func (c *Client) RawMempoolExtended() error {
+	// extended
 	r := NewRPCRequest("getrawmempool", []interface{}{true})
 	data, err := c.doRequest(r)
 	if err != nil {

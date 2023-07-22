@@ -1,6 +1,6 @@
 package mempool
 
-// RAW MEMPOOL RESPONSE
+// RAW MEMPOOL RESPONSE extended
 /*
 {
   "e335aa60ffb1462f8c15c6b3322d97294f9b65c8701c658b45325003b94a55e2": {
@@ -40,4 +40,8 @@ type MemPoolTx struct {
 	Startingpriority float64 `json:"startingpriority"`
 	Currentpriority  float64 `json:"currentpriority"`
 	// Depends          []int   `json:"depends"`
+}
+
+type MemPoolTxList struct {
+  
 }

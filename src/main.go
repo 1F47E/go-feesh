@@ -27,10 +27,11 @@ func main() {
 	}
 
 	// get raw mempool
-	err = cli.RawMempool()
+	txs, err := cli.RawMempool()
 	if err != nil {
 		log.Fatalln("error on rawmempool:", err)
 	}
+	log.Println("Raw mempool:", len(txs))
 
 	// get block
 	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
