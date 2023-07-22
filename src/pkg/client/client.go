@@ -233,7 +233,7 @@ func (c *Client) GetBlock(blockHash string) error {
 // get transaction
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawtransaction","params":["6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"],"id":1}' http://localhost:18334
 func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
-	fmt.Println("=== transactionGet")
+	// fmt.Println("=== transactionGet")
 	p1 := []interface{}{txid}
 	p2 := []interface{}{1}
 	params := append(p1, p2...)

@@ -2,9 +2,12 @@ package main
 
 import (
 	"go-btc-scan/src/pkg/client"
+	"go-btc-scan/src/pkg/entity/txpool"
 	"go-btc-scan/src/pkg/utils"
 	"log"
 	"os"
+	"sync"
+	"time"
 )
 
 var cli *client.Client
@@ -20,48 +23,118 @@ func init() {
 	}
 }
 func main() {
-	// ticker := time.NewTicker(1 * time.Second)
-	// cnt := 0
-	// for {
-	// 	select {
-	// 	case <-ticker.C:
-	// 		txs, err := cli.RawMempool()
-	// 		if err != nil {
-	// 			log.Fatalln("error on rawmempool:", err)
-	// 		}
-	// 		if len(txs) != cnt {
-	// 			log.Println("Raw mempool cnt:", len(txs))
-	// 		}
-	// 		cnt = len(txs)
-	// 	}
-	// }
-	txid := "8e4cd481812a6fefc86ce7f3fcd7a668fa840465dd8ffaa09761026185e5e7a9"
+
+	// debug calc mempool fee demo
+	mu := &sync.Mutex{}
+	pool := make(map[string]*txpool.TxPool)
+	cnt := 0
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer func() {
+			ticker.Stop()
+		}()
+		for {
+			select {
+			case <-ticker.C:
+				txs, err := cli.RawMempool()
+				if err != nil {
+					log.Fatalln("error on rawmempool:", err)
+				}
+				if len(txs) != cnt {
+					log.Println("Raw mempool cnt:", len(txs))
+				}
+				cnt = len(txs)
+				// add new tx to the pool
+				mu.Lock()
+				for _, tx := range txs {
+					if _, ok := pool[tx]; !ok {
+						pool[tx] = &txpool.TxPool{
+							Hash: tx,
+						}
+					}
+				}
+				mu.Unlock()
+			}
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer func() {
+			ticker.Stop()
+		}()
+		for {
+			select {
+			case <-ticker.C:
+				mu.Lock()
+				for _, tx := range pool {
+					// check tx data
+					if tx.AmountIn == 0 || tx.AmountOut == 0 {
+						in, out := getTxAmounts(tx.Hash)
+						tx.AmountIn = in
+						tx.AmountOut = out
+						// report
+						log.Printf("tx %s in: %d, out: %d\n", tx.Hash, tx.AmountIn, tx.AmountOut)
+					}
+				}
+				mu.Unlock()
+			}
+		}
+	}()
+
+	cnt = 0
+	for {
+		time.Sleep(1 * time.Second)
+		mu.Lock()
+		var totalIn, totalOut, fee uint64
+		for _, tx := range pool {
+			totalIn += tx.AmountIn
+			totalOut += tx.AmountOut
+			fee += tx.Fee()
+		}
+		poolGoodCnt := 0
+		for _, tx := range pool {
+			if tx.AmountIn != 0 && tx.AmountOut != 0 {
+				poolGoodCnt++
+			}
+		}
+		if cnt != poolGoodCnt {
+			log.Printf("total in: %d, total out: %d, fee: %d\n", totalIn, totalOut, fee)
+		}
+		cnt = len(pool)
+		mu.Unlock()
+	}
+
+}
+
+func getTxAmounts(txid string) (uint64, uint64) {
 	tx, err := cli.TransactionGet(txid)
 	if err != nil {
 		log.Fatalln("error on gettransaction:", err)
 	}
-	// print struct
-	utils.PrintStruct(tx)
-	// out
-	out := tx.GetTotalOut()
-	log.Println("out amount:", out)
-	// get in tx out
+	// ===== find out amount from vin tx matching by vout index
 	var in uint64
 	for _, vin := range tx.Vin {
 		txIn, err := cli.TransactionGet(vin.Txid)
 		if err != nil {
 			log.Fatalln("error on gettransaction:", err)
 		}
-		in += txIn.GetTotalOut()
+		for _, vout := range txIn.Vout {
+			if vout.N != vin.Vout {
+				continue
+			}
+			in += uint64(vout.Value * 1_0000_0000)
+		}
 	}
-	log.Println("in amount:", in)
-	fee := in - out
-	log.Printf("fee sat: %d\n", fee)
+	out := tx.GetTotalOut()
+	return in, out
+	// log.Println("in amount:", in)
+	// fee := in - out
+	// log.Printf("fee sat: %d\n", fee)
 	// fee per byte
-	feePerByte := float64(fee) / float64(tx.Size)
-	log.Printf("fee per byte: %f\n", feePerByte)
-
-	// utils.PrintStruct(tx)
+	// feePerByte := float64(fee) / float64(tx.Size)
+	// log.Printf("fee per byte: %.1f\n", feePerByte)
 
 }
 
