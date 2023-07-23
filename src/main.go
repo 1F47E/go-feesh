@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go-btc-scan/src/pkg/api"
 	"go-btc-scan/src/pkg/client"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
@@ -81,6 +82,12 @@ func main() {
 	// 	log.Fatalln("error on getblock:", err)
 	// }
 	// log.Println("block tx cnt:", len(b.Transactions))
+
+	a := api.NewApi()
+	err = a.Listen()
+	if err != nil {
+		log.Fatalf("error on listen: %v", err)
+	}
 
 }
 
