@@ -381,14 +381,14 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	return &resp, nil
 }
 
-func (c *Client) TransactionCalculate(txid string) (uint64, uint64) {
+func (c *Client) TransactionGetVin(txid string) (uint64, error) {
 	if len(txid) != 64 {
 		log.Fatalln("getTxAmounts invalid txid:", txid)
 	}
 	// txidparam := string(t)
 	tx, err := c.TransactionGet(txid)
 	if err != nil {
-		log.Fatalln("error on gettransaction:", err)
+		return 0, err
 	}
 	// ===== find out amount from vin tx matching by vout index
 	var in uint64
@@ -399,7 +399,7 @@ func (c *Client) TransactionCalculate(txid string) (uint64, uint64) {
 		}
 		txIn, err := c.TransactionGet(vin.Txid)
 		if err != nil {
-			log.Fatalln("error on gettransaction:", err)
+			return 0, err
 		}
 		for _, vout := range txIn.Vout {
 			if vout.N != vin.Vout {
@@ -408,15 +408,7 @@ func (c *Client) TransactionCalculate(txid string) (uint64, uint64) {
 			in += uint64(vout.Value * 1_0000_0000)
 		}
 	}
-	out := tx.GetTotalOut()
-	return in, out
-	// log.Println("in amount:", in)
-	// fee := in - out
-	// log.Printf("fee sat: %d\n", fee)
-	// fee per byte
-	// feePerByte := float64(fee) / float64(tx.Size)
-	// log.Printf("fee per byte: %.1f\n", feePerByte)
-
+	return in, nil
 }
 
 // decode raw transaction

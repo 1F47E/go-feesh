@@ -50,17 +50,17 @@ func main() {
 	// parse block tx, calc value and fee
 	// txs := make([]*txpool.TxPool, len(b.Transactions))
 	var totalValue, totalFee uint64
-	for _, txid := range b.Transactions {
-		in, out := getTxAmounts(txid)
-		tx := &mtx.Tx{
-			Hash:      txid,
-			AmountIn:  in,
-			AmountOut: out,
-		}
-		totalValue += in
-		totalFee += tx.Fee()
-		// txs[i] = tx
-	}
+	// for _, txid := range b.Transactions {
+	// in, out := getTxAmounts(txid)
+	// tx := &mtx.Tx{
+	// 	Hash:      txid,
+	// 	AmountIn:  in,
+	// 	AmountOut: out,
+	// }
+	// totalValue += in
+	// totalFee += tx.Fee()
+	// txs[i] = tx
+	// }
 	wBlock := &mblock.Block{
 		Hash:   b.Hash,
 		Height: b.Height,
@@ -155,7 +155,7 @@ func debugParseMempool() {
 		for _, tx := range pool {
 			totalIn += tx.AmountIn
 			totalOut += tx.AmountOut
-			fee += tx.Fee()
+			fee += tx.Fee
 		}
 		poolGoodCnt := 0
 		for _, tx := range pool {
