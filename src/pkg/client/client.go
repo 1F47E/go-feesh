@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"go-btc-scan/src/pkg/entity/btc/block"
 	"go-btc-scan/src/pkg/entity/btc/info"
-	"go-btc-scan/src/pkg/entity/btc/mempool"
 	"go-btc-scan/src/pkg/entity/btc/peer"
 	"go-btc-scan/src/pkg/entity/btc/tx"
+	"go-btc-scan/src/pkg/entity/btc/txpool"
 	"io"
 	"log"
 	"net/http"
@@ -81,6 +81,7 @@ func NewClient(host, user, password string) (*Client, error) {
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
+	// TODO: add retries
 	// log.Printf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
 	jr, err := json.Marshal(r)
 	if err != nil {
@@ -235,6 +236,9 @@ func (c *Client) GetBlockHeader(hash string) (*block.Block, error) {
 
 // rawmempool request list of tx
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[],"id":1}' http://localhost:18334
+// NOTE: to have ordered list of txs node shuld be patched
+// getrawmempool by default returns unsorted array of txs
+// the array should be ordered by time and hash, desc
 func (c *Client) RawMempool() ([]string, error) {
 	r := NewRPCRequest("getrawmempool", []interface{}{})
 	data, err := c.doRequest(r)
@@ -254,7 +258,8 @@ func (c *Client) RawMempool() ([]string, error) {
 
 // rawmempool request extended
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[true],"id":1}' http://localhost:18334
-func (c *Client) RawMempoolExtended() ([]mempool.MemPoolTx, error) {
+// NOTE: takes a long time. 1+ min for the pool of 80k txs
+func (c *Client) RawMempoolExtended() ([]txpool.TxPool, error) {
 	// extended
 	r := NewRPCRequest("getrawmempool", []interface{}{true})
 	data, err := c.doRequest(r)
@@ -271,13 +276,13 @@ func (c *Client) RawMempoolExtended() ([]mempool.MemPoolTx, error) {
 		return nil, err
 	}
 
-	var resp map[string]mempool.MemPoolTx
+	var resp map[string]txpool.TxPool
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]mempool.MemPoolTx, 0)
+	res := make([]txpool.TxPool, 0)
 	log.Printf("raw mempool transactions found %d\n", len(resp))
 	for k, v := range resp {
 		v.Hash = k
@@ -381,24 +386,17 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	return &resp, nil
 }
 
-func (c *Client) TransactionGetVin(txid string) (uint64, error) {
-	if len(txid) != 64 {
-		log.Fatalln("getTxAmounts invalid txid:", txid)
-	}
-	// txidparam := string(t)
-	tx, err := c.TransactionGet(txid)
-	if err != nil {
-		return 0, err
-	}
+func (c *Client) TransactionGetVin(t *tx.Transaction) (uint64, error) {
 	// ===== find out amount from vin tx matching by vout index
 	var in uint64
-	for _, vin := range tx.Vin {
+	for _, vin := range t.Vin {
 		// mined
 		if vin.Coinbase != "" {
 			continue
 		}
 		txIn, err := c.TransactionGet(vin.Txid)
 		if err != nil {
+			log.Fatalln("error getting vin tx:", err)
 			return 0, err
 		}
 		for _, vout := range txIn.Vout {

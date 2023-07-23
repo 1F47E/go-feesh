@@ -5,7 +5,7 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
 
-	// "go-btc-scan/src/pkg/entity/btc/block"
+	"go-btc-scan/src/pkg/entity/btc/info"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"log"
@@ -14,10 +14,9 @@ import (
 )
 
 type Core struct {
-	ctx context.Context
-	mu  *sync.Mutex
-	cli *client.Client
-	// poolCache map[string]struct{}
+	ctx    context.Context
+	mu     *sync.Mutex
+	cli    *client.Client
 	pool   *pool.Pool
 	blocks []*mblock.Block
 }
@@ -32,14 +31,27 @@ func NewCore(ctx context.Context, cli *client.Client) *Core {
 	}
 }
 
-func (c *Core) Run() {
+func (c *Core) Start() {
+	// set the pool block height
+	info, err := c.cli.GetInfo()
+	if err != nil {
+		log.Printf("error on getinfo: %v\n", err)
+	} else {
+		// even if its fails - having block 0 will update pool txs list every time
+		// its just for performance reasons
+		c.pool.BlockHeight = info.Blocks
+	}
 	go c.workerPool()
 
 }
 
+func (c *Core) GetNodeInfo() (*info.Info, error) {
+	return c.cli.GetInfo()
+}
+
 // parse last N blocks
 func (c *Core) bootstrap() {
-	// TODO: bootstap
+	// TODO: bootstap blocks
 	// get best block
 	// download header, get prev block, repeat N times
 	// parse every block
@@ -56,37 +68,43 @@ func (c *Core) workerPool() {
 		case <-c.ctx.Done():
 			return
 		case <-ticker.C:
-			// parse pool
-			txs, err := c.cli.RawMempool()
+			// check the block height
+			info, err := c.cli.GetInfo()
 			if err != nil {
-				log.Fatalln("error on rawmempool:", err)
+				log.Printf("error on getinfo: %v\n", err)
+				continue
 			}
-			// add new tx to the pool
-			c.mu.Lock()
-			txsNew := make([]string, 0)
-			for _, txid := range txs {
-				if !c.pool.HasTx(txid) {
-					txsNew = append(txsNew, txid)
-				}
+
+			// get ordered list of pool tsx. new first
+			poolTxs, err := c.cli.RawMempool()
+			if err != nil {
+				log.Printf("error on rawmempool: %v\n", err)
+				continue
 			}
-			if len(txsNew) > 0 {
-				go c.parsePoolTxs(txsNew)
-			}
-			c.mu.Unlock()
+
+			c.parsePoolTxs(poolTxs, info.Blocks)
 		}
 	}
 }
 
-func (c *Core) parsePoolTxs(txs []string) {
+func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
+	c.mu.Lock()
+	if c.pool.BlockHeight != blockHeight {
+		c.pool.Reset(blockHeight)
+	}
 	for _, txid := range txs {
-		// tx := &tx.Tx{Hash: txid}
+		// parse only new
+		if c.pool.HasTx(txid) {
+			continue
+		}
+
 		rpcTx, err := c.cli.TransactionGet(txid)
 		if err != nil {
 			log.Printf("error on get tx %s: %s\n", txid, err)
 			continue
 		}
 		// calc vin via parsing vin txid
-		amountIn, err := c.cli.TransactionGetVin(rpcTx.Hash)
+		amountIn, err := c.cli.TransactionGetVin(rpcTx)
 		if err != nil {
 			log.Printf("error on get vin tx %s: %s\n", txid, err)
 			continue
@@ -95,7 +113,7 @@ func (c *Core) parsePoolTxs(txs []string) {
 		// construct tx model
 		tx := &mtx.Tx{
 			Hash:      txid,
-			Time:      time.Unix(int64(rpcTx.Time), 0),
+			Time:      time.Now(),
 			AmountIn:  amountIn,
 			AmountOut: rpcTx.GetTotalOut(),
 		}
@@ -105,5 +123,21 @@ func (c *Core) parsePoolTxs(txs []string) {
 
 		c.pool.AddTx(tx)
 	}
+
+	c.mu.Unlock()
 	// TODO: push new pool tx list to web socket
+}
+
+// pool access from API
+
+func (c *Core) GetPoolTxs() []*mtx.Tx {
+	return c.pool.GetTxs()
+}
+
+func (c *Core) GetPoolTxsRecent(limit int) []*mtx.Tx {
+	return c.pool.GetTxsRecent(limit)
+}
+
+func (c *Core) GetPoolHeight() int {
+	return c.pool.BlockHeight
 }

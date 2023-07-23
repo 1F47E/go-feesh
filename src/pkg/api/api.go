@@ -1,20 +1,23 @@
 package api
 
 import (
+	"go-btc-scan/src/pkg/core"
 	"log"
 	"os"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 type Api struct {
-	app *fiber.App
+	app  *fiber.App
+	core *core.Core
 }
 
-func NewApi() *Api {
+func NewApi(core *core.Core) *Api {
 	app := fiber.New(
 		fiber.Config{
 			BodyLimit: 1024 * 1024 * 100, // 100MB
@@ -25,11 +28,14 @@ func NewApi() *Api {
 	// RECOVERY
 	app.Use(recover.New())
 
-	a := Api{app}
+	a := Api{app, core}
 
 	// setup routes
 	api := a.app.Group("/v0")
+	api.Get("/monitor", monitor.New())
 	api.Get("/ping", a.Ping)
+	api.Get("/info", a.NodeInfo)
+	api.Get("/pool", a.Pool)
 	return &a
 }
 

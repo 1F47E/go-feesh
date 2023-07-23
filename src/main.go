@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"go-btc-scan/src/pkg/api"
 	"go-btc-scan/src/pkg/client"
+	"go-btc-scan/src/pkg/core"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"go-btc-scan/src/pkg/utils"
@@ -83,7 +85,13 @@ func main() {
 	// }
 	// log.Println("block tx cnt:", len(b.Transactions))
 
-	a := api.NewApi()
+	// TODO: graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := core.NewCore(ctx, cli)
+	c.Start()
+	a := api.NewApi(c)
 	err = a.Listen()
 	if err != nil {
 		log.Fatalf("error on listen: %v", err)
