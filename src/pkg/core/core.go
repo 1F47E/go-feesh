@@ -4,11 +4,11 @@ import (
 	"context"
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
+	log "go-btc-scan/src/pkg/logger"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
-	"log"
 	"sync"
 	"time"
 )
@@ -35,7 +35,7 @@ func (c *Core) Start() {
 	// set the pool block height
 	info, err := c.cli.GetInfo()
 	if err != nil {
-		log.Printf("error on getinfo: %v\n", err)
+		log.Log.Errorf("error on getinfo: %v\n", err)
 	} else {
 		// even if its fails - having block 0 will update pool txs list every time
 		// its just for performance reasons
@@ -71,14 +71,14 @@ func (c *Core) workerPool() {
 			// check the block height
 			info, err := c.cli.GetInfo()
 			if err != nil {
-				log.Printf("error on getinfo: %v\n", err)
+				log.Log.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
 
 			// get ordered list of pool tsx. new first
 			poolTxs, err := c.cli.RawMempool()
 			if err != nil {
-				log.Printf("error on rawmempool: %v\n", err)
+				log.Log.Errorf("error on rawmempool: %v\n", err)
 				continue
 			}
 
@@ -100,13 +100,13 @@ func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
 
 		rpcTx, err := c.cli.TransactionGet(txid)
 		if err != nil {
-			log.Printf("error on get tx %s: %s\n", txid, err)
+			log.Log.Errorf("error on get tx %s: %s\n", txid, err)
 			continue
 		}
 		// calc vin via parsing vin txid
 		amountIn, err := c.cli.TransactionGetVin(rpcTx)
 		if err != nil {
-			log.Printf("error on get vin tx %s: %s\n", txid, err)
+			log.Log.Errorf("error on get vin tx %s: %s\n", txid, err)
 			continue
 		}
 

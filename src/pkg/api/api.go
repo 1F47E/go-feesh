@@ -2,7 +2,7 @@ package api
 
 import (
 	"go-btc-scan/src/pkg/core"
-	"log"
+	log "go-btc-scan/src/pkg/logger"
 	"os"
 
 	fiber "github.com/gofiber/fiber/v2"
@@ -41,16 +41,16 @@ func NewApi(core *core.Core) *Api {
 
 // will block
 func (a *Api) Listen() error {
-	log.Println("Starting server...")
+	log.Log.Info("Starting server...")
 	err := a.app.Listen(os.Getenv("API_HOST"))
 	if err != nil {
-		log.Fatal(err)
+		log.Log.Fatal(err)
 	}
 	return nil
 }
 
 // shutdown
 func (a *Api) Shutdown() error {
-	log.Println("Shutting down server...")
+	log.Log.Info("Shutting down server...")
 	return a.app.Shutdown()
 }

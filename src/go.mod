@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/gofiber/fiber/v2 v2.48.0
+	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
