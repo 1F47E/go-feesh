@@ -27,8 +27,6 @@ func init() {
 }
 
 func main() {
-	// get current block height
-
 	// get node info
 	info, err := cli.GetInfo()
 	if err != nil {
@@ -69,7 +67,7 @@ func main() {
 		Value:  totalValue,
 		Fee:    totalFee,
 	}
-	log.Printf("block %d, value: %s, fee: %s\n", wBlock.Height, wBlock.ValueString(), wBlock.FeeString())
+	log.Printf("block %d, value: %d, fee: %d\n", wBlock.Height, wBlock.Value, wBlock.Fee)
 
 	// get block header
 	// header, err := cli.GetBlockHeader(bestBlock.Hash)
@@ -219,11 +217,11 @@ func debug() {
 	var err error
 
 	// get node info
-	info, err := cli.GetInfo()
+	into, err := cli.GetInfo()
 	if err != nil {
 		log.Fatalln("error on getinfo:", err)
 	}
-	log.Printf("node info: %+v\n", info)
+	log.Printf("node info: %+v\n", into)
 
 	// get block
 	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
