@@ -1,5 +1,14 @@
 package txpool
 
+// struct for custom getrawmempool response
+type TxPool struct {
+	Hash     string `json:"txid"`
+	Time     string `json:"time"`
+	Weight   string `json:"weight"`
+	Fee      string `json:"fee"`
+	FeePerKB string `json:"fee_kb"`
+}
+
 // struct to parse response from rawmempool true (verbose)
 // with simplified fields
 // time field is only avaiable via this method.
@@ -21,7 +30,7 @@ package txpool
     ]
   }
 */
-type TxPool struct {
+type TxPoolVerbose struct {
 	Hash         string   `json:"hash"` // hash is the key from the response
 	Size         int      `json:"size"`
 	VSize        int      `json:"vsize"`

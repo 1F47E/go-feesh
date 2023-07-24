@@ -5,8 +5,10 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
 	log "go-btc-scan/src/pkg/logger"
+	"strconv"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
+	"go-btc-scan/src/pkg/entity/btc/txpool"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"sync"
@@ -89,7 +91,7 @@ func (c *Core) workerPool() {
 	}
 }
 
-func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
+func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
 	c.mu.Lock()
 	log.Log.Debugf("parsing pool txs: %d\n", len(txs))
 	if c.pool.BlockHeight != blockHeight {
@@ -101,35 +103,22 @@ func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
 	// txs = txs[:10]
 	// TODO: split into batches
 
-	for _, txid := range txs {
+	for _, tx := range txs {
 		// parse only new
-		if c.pool.HasTx(txid) {
+		if c.pool.HasTx(tx.Hash) {
 			continue
 		}
+		// parse from string to int64
+		timeunix, _ := strconv.ParseInt(tx.Time, 10, 64)
+		weight, _ := strconv.ParseUint(tx.Weight, 10, 64)
+		fee, _ := strconv.ParseUint(tx.Fee, 10, 64)
 
-		rpcTx, err := c.cli.TransactionGet(txid)
-		if err != nil {
-			log.Log.Errorf("error on get tx %s: %s\n", txid, err)
-			continue
-		}
-		// calc vin via parsing vin txid
-		amountIn, err := c.cli.TransactionGetVin(rpcTx)
-		if err != nil {
-			log.Log.Errorf("error on get vin tx %s: %s\n", txid, err)
-			continue
-		}
-
-		// construct tx model
+		// remap to tx model
 		tx := &mtx.Tx{
-			Hash:      txid,
-			Time:      time.Now(),
-			Size:      rpcTx.Size,
-			Weight:    rpcTx.Weight,
-			AmountIn:  amountIn,
-			AmountOut: rpcTx.GetTotalOut(),
-		}
-		if tx.AmountIn != 0 && tx.AmountOut != 0 {
-			tx.Fee = tx.AmountIn - tx.AmountOut
+			Hash:   tx.Hash,
+			Time:   time.Unix(timeunix, 0),
+			Weight: weight,
+			Fee:    fee,
 		}
 
 		c.pool.AddTx(tx)

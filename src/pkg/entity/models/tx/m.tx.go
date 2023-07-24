@@ -12,7 +12,7 @@ type Tx struct {
 	Time      time.Time `json:"time"`
 	Block     string    `json:"block"`
 	Size      int       `json:"size"`
-	Weight    int       `json:"weight"`
+	Weight    uint64    `json:"weight"`
 	AmountIn  uint64    `json:"amount_in"`
 	AmountOut uint64    `json:"amount_out"`
 	Fee       uint64    `json:"fee"`

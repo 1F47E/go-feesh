@@ -8,7 +8,6 @@ import (
 	"go-btc-scan/src/pkg/entity/btc/info"
 	"go-btc-scan/src/pkg/entity/btc/peer"
 	"go-btc-scan/src/pkg/entity/btc/tx"
-	"go-btc-scan/src/pkg/entity/btc/txpool"
 	"io"
 	"log"
 	"net/http"
@@ -72,7 +71,7 @@ func NewClient(host, user, password string) (*Client, error) {
 	}
 	return &Client{
 		client: &http.Client{
-			Timeout: time.Second * 5,
+			Timeout: time.Second * 600, // getrawmempool verbose can take a long fucking time
 		},
 		host:     host,
 		user:     user,
@@ -232,64 +231,6 @@ func (c *Client) GetBlockHeader(hash string) (*block.Block, error) {
 		return nil, err
 	}
 	return ret, nil
-}
-
-// rawmempool request list of tx
-// curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[],"id":1}' http://localhost:18334
-// NOTE: to have ordered list of txs node shuld be patched
-// getrawmempool by default returns unsorted array of txs
-// the array should be ordered by time and hash, desc
-func (c *Client) RawMempool() ([]string, error) {
-	r := NewRPCRequest("getrawmempool", []interface{}{})
-	data, err := c.doRequest(r)
-	if err != nil {
-		return nil, err
-	}
-	// check type of result
-	ret := make([]string, 0)
-	for _, v := range data.Result.([]interface{}) {
-		if _, ok := v.(string); !ok {
-			continue
-		}
-		ret = append(ret, v.(string))
-	}
-	return ret, nil
-}
-
-// rawmempool request extended
-// curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[true],"id":1}' http://localhost:18334
-// NOTE: takes a long time. 1+ min for the pool of 80k txs
-func (c *Client) RawMempoolExtended() ([]txpool.TxPool, error) {
-	// extended
-	r := NewRPCRequest("getrawmempool", []interface{}{true})
-	data, err := c.doRequest(r)
-	if err != nil {
-		log.Fatalln("error doing request:", err)
-	}
-	// check type of result
-	if _, ok := data.Result.(map[string]interface{}); !ok {
-		return nil, fmt.Errorf("unexpected type for result")
-	}
-	// Convert back to raw JSON
-	rawJson, err := json.Marshal(data.Result)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp map[string]txpool.TxPool
-	err = json.Unmarshal(rawJson, &resp)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]txpool.TxPool, 0)
-	log.Printf("raw mempool transactions found %d\n", len(resp))
-	for k, v := range resp {
-		v.Hash = k
-		// log.Printf("txid: %s, fee: %f\n", k, v.Fee)
-		res = append(res, v)
-	}
-	return res, nil
 }
 
 // get block by hash

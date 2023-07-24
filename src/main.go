@@ -6,14 +6,9 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"go-btc-scan/src/pkg/utils"
 	"log"
 	"os"
-	"sync"
-	"time"
-
-	"github.com/btcsuite/btcd/btcutil"
 )
 
 var cli *client.Client
@@ -95,97 +90,6 @@ func main() {
 	err = a.Listen()
 	if err != nil {
 		log.Fatalf("error on listen: %v", err)
-	}
-
-}
-
-func debugParseMempool() {
-
-	// debug calc mempool fee demo
-	mu := &sync.Mutex{}
-	pool := make(map[string]*mtx.Tx)
-	cnt := 0
-
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer func() {
-			ticker.Stop()
-		}()
-		for {
-			select {
-			case <-ticker.C:
-				txs, err := cli.RawMempool()
-				if err != nil {
-					log.Fatalln("error on rawmempool:", err)
-				}
-				if len(txs) != cnt {
-					log.Println("Raw mempool cnt:", len(txs))
-				}
-				cnt = len(txs)
-				// add new tx to the pool
-				mu.Lock()
-				for _, tx := range txs {
-					if _, ok := pool[tx]; !ok {
-						pool[tx] = &mtx.Tx{
-							Hash: tx,
-						}
-					}
-				}
-				mu.Unlock()
-			}
-		}
-	}()
-
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer func() {
-			ticker.Stop()
-		}()
-		for {
-			select {
-			case <-ticker.C:
-				mu.Lock()
-				for _, tx := range pool {
-					// check tx data
-					if tx.AmountIn == 0 || tx.AmountOut == 0 {
-						in, out := getTxAmounts(tx.Hash)
-						tx.AmountIn = in
-						tx.AmountOut = out
-						// report
-						inBtc := btcutil.Amount(in)
-						outBtc := btcutil.Amount(out)
-						log.Printf("tx %s in: %s, out: %s\n", tx.Hash, inBtc.String(), outBtc.String())
-					}
-				}
-				mu.Unlock()
-			}
-		}
-	}()
-
-	cnt = 0
-	for {
-		time.Sleep(1 * time.Second)
-		mu.Lock()
-		var totalIn, totalOut, fee uint64
-		for _, tx := range pool {
-			totalIn += tx.AmountIn
-			totalOut += tx.AmountOut
-			fee += tx.Fee
-		}
-		poolGoodCnt := 0
-		for _, tx := range pool {
-			if tx.AmountIn != 0 && tx.AmountOut != 0 {
-				poolGoodCnt++
-			}
-		}
-		if cnt != poolGoodCnt {
-			totalInBtc := btcutil.Amount(totalIn)
-			totalOutBtc := btcutil.Amount(totalOut)
-			feeBtc := btcutil.Amount(fee)
-			log.Printf("total in: %s, out: %s, fee: %s\n", totalInBtc.String(), totalOutBtc.String(), feeBtc.String())
-		}
-		cnt = len(pool)
-		mu.Unlock()
 	}
 
 }
@@ -277,7 +181,7 @@ func debug() {
 	log.Println("Raw mempool:", len(txs))
 
 	// get extended mempool
-	txs2, err := cli.RawMempoolExtended()
+	txs2, err := cli.RawMempoolVerbose()
 	if err != nil {
 		log.Fatalln("error on rawmempool:", err)
 	}
