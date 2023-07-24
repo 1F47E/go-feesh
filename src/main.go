@@ -6,6 +6,7 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
+	smap "go-btc-scan/src/pkg/storage/map"
 	"go-btc-scan/src/pkg/utils"
 	"log"
 	"os"
@@ -84,7 +85,18 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	c := core.NewCore(ctx, cli)
+	// create storage
+
+	// create in mem storage (debug only)
+	s := smap.New()
+	// create redis storage
+	// s, err := sredis.New(ctx)
+	// if err != nil {
+	// 	log.Fatalln("error on redis storage:", err)
+	// }
+
+	// create core with RPC client and storage
+	c := core.NewCore(ctx, cli, s)
 	c.Start()
 	a := api.NewApi(c)
 	err = a.Listen()

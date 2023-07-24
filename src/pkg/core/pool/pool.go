@@ -8,14 +8,14 @@ import (
 // because this struct is used in a loop a lot
 type Pool struct {
 	txs         []*tx.Tx
-	cache       map[string]struct{}
+	cache       map[string]*tx.Tx
 	BlockHeight int
 }
 
 func NewPool() *Pool {
 	return &Pool{
 		txs:   make([]*tx.Tx, 0),
-		cache: make(map[string]struct{}, 0),
+		cache: make(map[string]*tx.Tx, 0),
 	}
 }
 
@@ -29,16 +29,26 @@ func (p *Pool) HasTx(txid string) bool {
 	return ok
 }
 
+// get tx from cache
+func (p *Pool) GetTx(txid string) *tx.Tx {
+	tx, ok := p.cache[txid]
+	if !ok {
+		return nil
+	}
+	return tx
+}
+
 func (p *Pool) AddTx(tx *tx.Tx) {
 	p.txs = append(p.txs, tx)
-	p.cache[tx.Hash] = struct{}{}
+	p.cache[tx.Hash] = tx
 }
 
 // on new block - reset the pool
 func (p *Pool) Reset(height int) {
 	p.BlockHeight = height
 	p.txs = make([]*tx.Tx, 0)
-	p.cache = make(map[string]struct{}, 0)
+	// p.cache = make(map[string]*tx.Tx, 0)
+	// TODO: cleanup cache
 }
 
 // get all txs
@@ -46,8 +56,9 @@ func (p *Pool) GetTxs() []*tx.Tx {
 	return p.txs
 }
 
-func (p *Pool) GetCacheCopy() map[string]struct{} {
-	cache := make(map[string]struct{}, len(p.cache))
+func (p *Pool) GetCacheCopy() map[string]*tx.Tx {
+	// make deep copy
+	cache := make(map[string]*tx.Tx, len(p.cache))
 	for k, v := range p.cache {
 		cache[k] = v
 	}

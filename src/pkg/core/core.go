@@ -5,6 +5,7 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
 	log "go-btc-scan/src/pkg/logger"
+	"go-btc-scan/src/pkg/storage"
 	"math/rand"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
@@ -22,9 +23,10 @@ type Core struct {
 	blocks      []*mblock.Block
 	poolTxCh    chan *mtx.Tx
 	poolTxResCh chan *mtx.Tx
+	storage     storage.TxRepository
 }
 
-func NewCore(ctx context.Context, cli *client.Client) *Core {
+func NewCore(ctx context.Context, cli *client.Client, strg storage.TxRepository) *Core {
 	return &Core{
 		ctx:         ctx,
 		mu:          &sync.Mutex{},
@@ -33,6 +35,7 @@ func NewCore(ctx context.Context, cli *client.Client) *Core {
 		blocks:      make([]*mblock.Block, 0),
 		poolTxCh:    make(chan *mtx.Tx),
 		poolTxResCh: make(chan *mtx.Tx),
+		storage:     strg,
 	}
 }
 
@@ -46,7 +49,7 @@ func (c *Core) Start() {
 		// its just for performance reasons
 		c.pool.BlockHeight = info.Blocks
 	}
-	go c.workerPool()
+	go c.workerGetMemPool()
 	// make a batch of parsers
 	for i := 0; i < 420; i++ {
 		go c.workerTxParser()
@@ -68,37 +71,54 @@ func (c *Core) bootstrap() {
 }
 
 func (c *Core) workerTxParser() {
-	name := "workerTxParser"
-	log.Log.Infof("[%s] started\n", name)
+	name := "[workerTxParser]"
+	log.Log.Tracef("%s started\n", name)
 	defer func() {
-		log.Log.Infof("[%s] stopped\n", name)
+		log.Log.Debugf("%s stopped\n", name)
 	}()
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case tx := <-c.poolTxCh:
+			var err error
+
+			// get tx from cache
+			stx, err := c.storage.TxGet(tx.Hash)
+			if err != nil {
+				log.Log.Errorf("%s error on storage.TxGet: %v\n", name, err)
+				continue
+			}
+			if stx != nil {
+				c.poolTxResCh <- stx
+				continue
+			}
+
 			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
 			// do tx parsing
 			max := 10
-			var err error
-			txUpdated := new(mtx.Tx)
+			txFull := new(mtx.Tx)
 			for i := 0; i <= max; i++ {
 				// sleep randomly
-				time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
-				txUpdated, err = c.parsePoolTx(tx)
+				time.Sleep(time.Duration(300*i+rand.Intn(300)) * time.Millisecond)
+				txFull, err = c.parsePoolTx(tx)
 				if err != nil {
 					if err.Error() == client.ERR_5xx {
-						log.Log.Errorf("error 5xx, retrying %d/%d\n", i+1, max)
+						log.Log.Errorf("%s error 5xx, retrying %d/%d\n", i+1, name, max)
 						continue
 					}
-					log.Log.Errorf("error on parsePoolTx: %v\n", err)
+					log.Log.Errorf("%s error on parsePoolTx: %v\n", name, err)
 					continue
 				}
 				break
 			}
 			// log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
-			c.poolTxResCh <- txUpdated
+			// save tx
+			err = c.storage.TxAdd(txFull)
+			if err != nil {
+				log.Log.Errorf("%s error on storage.TxAdd: %v\n", name, err)
+			}
+			c.poolTxResCh <- txFull
 			// log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
 		}
 	}
@@ -124,8 +144,8 @@ func (c *Core) workerTxAdder() {
 	}
 }
 
-func (c *Core) workerPool() {
-	name := "workerPool"
+func (c *Core) workerGetMemPool() {
+	name := "workerGetMemPool"
 	log.Log.Infof("[%s] started\n", name)
 	ticker := time.NewTicker(3 * time.Second)
 	defer func() {
@@ -164,6 +184,7 @@ func (c *Core) workerPool() {
 			// copy cache to avoid locks
 			cache := c.pool.GetCacheCopy()
 
+			// TODO: optimize later - do not parse txs that are already in pool
 			for _, tx := range poolTxs {
 				// skip if already in pool
 				if _, ok := cache[tx.Hash]; ok {
@@ -182,8 +203,8 @@ func (c *Core) workerPool() {
 				}
 				c.poolTxCh <- mt
 			}
-
-			// c.parsePoolTxs(poolTxs, info.Blocks)
+			// log storage size
+			log.Log.Debugf("storage size: %d\n", c.storage.Size())
 		}
 	}
 }
@@ -198,49 +219,6 @@ func (c *Core) parsePoolTx(tx *mtx.Tx) (*mtx.Tx, error) {
 
 	return tx, nil
 }
-
-// func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
-// 	c.mu.Lock()
-// 	log.Log.Debugf("parsing pool txs: %d\n", len(txs))
-// 	if c.pool.BlockHeight != blockHeight {
-// 		log.Log.Debugf("reset pool block height: %d\n", blockHeight)
-// 		c.pool.Reset(blockHeight)
-// 	}
-// 	sizeOG := c.pool.Size()
-// 	// debug. cut tx list
-// 	// txs = txs[:10]
-// 	// TODO: split into batches
-//
-// 	for _, tx := range txs {
-// 		// parse only new
-// 		if c.pool.HasTx(tx.Hash) {
-// 			continue
-// 		}
-//
-// 		// remap to tx model
-// 		tx := &mtx.Tx{
-// 			Hash:   tx.Hash,
-// 			Time:   time.Unix(tx.Time, 0),
-// 			Size:   tx.Size,
-// 			Vsize:  tx.Vsize,
-// 			Weight: tx.Weight,
-// 			Fee:    tx.Fee,
-// 			FeeKb:  tx.FeePerKB,
-// 		}
-//
-// 		c.pool.AddTx(tx)
-// 	}
-// 	newSize := c.pool.Size()
-// 	added := newSize - sizeOG
-// 	if added > 0 {
-// 		log.Log.Debugf("parsing done. new tx batch %d added, pool size: %d\n", added, c.pool.Size())
-// 	} else {
-// 		log.Log.Debugf("parsing done. no new txs added, pool size: %d\n", c.pool.Size())
-// 	}
-//
-// 	c.mu.Unlock()
-// 	// TODO: push new pool tx list to web socket
-// }
 
 // pool access from API
 
