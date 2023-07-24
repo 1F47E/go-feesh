@@ -65,11 +65,13 @@ func (c *Core) bootstrap() {
 }
 
 func (c *Core) workerTxParser() {
+	name := "workerTxParser"
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case tx := <-c.poolTxCh:
+			log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
 			// do tx parsing
 			txUpdated, err := c.parsePoolTx(tx)
 			if err != nil {
@@ -77,6 +79,7 @@ func (c *Core) workerTxParser() {
 				continue
 			}
 			c.poolTxResCh <- txUpdated
+			log.Log.Debugf("[%s] parsed tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
 		}
 	}
 }
