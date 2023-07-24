@@ -140,10 +140,12 @@ func (c *Core) workerPool() {
 			}
 
 			// ramap btc tx to model tx and send them to additional parsing
-			c.mu.Lock()
+			// copy cache to avoid locks
+			cache := c.pool.GetCacheCopy()
+
 			for _, tx := range poolTxs {
 				// skip if already in pool
-				if c.pool.HasTx(tx.Hash) {
+				if _, ok := cache[tx.Hash]; ok {
 					continue
 				}
 
@@ -159,7 +161,6 @@ func (c *Core) workerPool() {
 				}
 				c.poolTxCh <- mt
 			}
-			c.mu.Unlock()
 
 			// c.parsePoolTxs(poolTxs, info.Blocks)
 		}

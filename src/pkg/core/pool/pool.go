@@ -46,6 +46,14 @@ func (p *Pool) GetTxs() []*tx.Tx {
 	return p.txs
 }
 
+func (p *Pool) GetCacheCopy() map[string]struct{} {
+	cache := make(map[string]struct{}, len(p.cache))
+	for k, v := range p.cache {
+		cache[k] = v
+	}
+	return cache
+}
+
 func (p *Pool) Size() int {
 	return len(p.txs)
 }
