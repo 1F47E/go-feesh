@@ -48,7 +48,7 @@ func (c *Core) Start() {
 	}
 	go c.workerPool()
 	// make a batch of parsers
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 420; i++ {
 		go c.workerTxParser()
 	}
 
@@ -79,16 +79,25 @@ func (c *Core) workerTxParser() {
 			return
 		case tx := <-c.poolTxCh:
 			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
-			// sleep randomly
-			time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
 			// do tx parsing
-			txUpdated, err := c.parsePoolTx(tx)
-			if err != nil {
-				log.Log.Errorf("error on parsePoolTx: %v\n", err)
-				continue
+			max := 10
+			var err error
+			for i := 0; i <= max; i++ {
+				// sleep randomly
+				time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
+				tx, err = c.parsePoolTx(tx)
+				if err != nil {
+					if err.Error() == client.ERR_5xx {
+						log.Log.Errorf("error 5xx, retrying %d/%d\n", i+1, max)
+						continue
+					}
+					log.Log.Errorf("error on parsePoolTx: %v\n", err)
+					continue
+				}
+				break
 			}
 			// log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
-			c.poolTxResCh <- txUpdated
+			c.poolTxResCh <- tx
 			// log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
 		}
 	}
@@ -109,7 +118,7 @@ func (c *Core) workerTxAdder() {
 			c.mu.Lock()
 			c.pool.AddTx(tx)
 			c.mu.Unlock()
-			log.Log.Debugf("[%s] added tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
+			// log.Log.Debugf("[%s] added tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
 		}
 	}
 }

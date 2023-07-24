@@ -79,6 +79,8 @@ func NewClient(host, user, password string) (*Client, error) {
 	}, nil
 }
 
+var ERR_5xx = "5xx"
+
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	// TODO: add retries
 	// log.Printf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
@@ -102,6 +104,11 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	// log http code
+	// retry on 5xx
+	if resp.StatusCode >= 500 {
+		return nil, fmt.Errorf(ERR_5xx)
+	}
 
 	// debug
 	// read response to bytes
