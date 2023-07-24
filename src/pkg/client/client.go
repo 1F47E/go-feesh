@@ -178,14 +178,15 @@ func (c *Client) GetBestBlock() (*ResponseGetBestBlock, error) {
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+		log.Log.Errorf("Error marshalling back to raw JSON: %v", err)
+		return nil, err
 	}
 
 	// parse into struct
 	var info ResponseGetBestBlock
 	err = json.Unmarshal(rawJson, &info)
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response:", err)
 		return nil, err
 	}
 	return &info, nil
@@ -223,14 +224,15 @@ func (c *Client) GetBlockHeader(hash string) (*block.Block, error) {
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+		log.Log.Errorf("Error marshalling back to raw JSON: %v\n", err)
+		return nil, err
 	}
 
 	// parse into struct
 	ret := new(block.Block)
 	err = json.Unmarshal(rawJson, ret)
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response: %v\n", err)
 		return nil, err
 	}
 	return ret, nil
@@ -272,7 +274,8 @@ func (c *Client) GetBlock(blockHash string) (*block.Block, error) {
 	r := NewRPCRequest("getblock", []interface{}{blockHash})
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Fatalln("error doing request:", err)
+		log.Log.Errorf("error doing request: %v\n", err)
+		return nil, err
 	}
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
@@ -308,24 +311,27 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	r := NewRPCRequest("getrawtransaction", params)
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Fatalln("error doing request:", err)
+		log.Log.Errorf("error doing request: %v\n", err)
+		return nil, err
 	}
 	// check type of result is string
 	if _, ok := data.Result.(map[string]interface{}); !ok {
-		log.Printf("data.Result: %v\n", data.Result)
+		log.Log.Errorf("data.Result: %v\n", data.Result)
 		return nil, fmt.Errorf("unexpected type for result")
 	}
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+		log.Log.Errorf("Error marshalling back to raw JSON: %v\n", err)
+		return nil, err
 	}
 
 	// parse into struct
 	var resp tx.Transaction
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response: %v\n", err)
+		return nil, err
 	}
 	return &resp, nil
 }
@@ -340,7 +346,7 @@ func (c *Client) TransactionGetVin(t *tx.Transaction) (uint64, error) {
 		}
 		txIn, err := c.TransactionGet(vin.Txid)
 		if err != nil {
-			log.Fatalln("error getting vin tx:", err)
+			log.Log.Errorf("error getting vin tx: %v\n", err)
 			return 0, err
 		}
 		for _, vout := range txIn.Vout {
@@ -359,7 +365,8 @@ func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {
 	r := NewRPCRequest("decoderawtransaction", []interface{}{txdata})
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Fatalln("error doing request:", err)
+		log.Log.Errorf("error doing request: %v\n", err)
+		return nil, err
 	}
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
@@ -368,14 +375,16 @@ func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Fatalf("Error marshalling back to raw JSON: %v", err)
+		log.Log.Errorf("Error marshalling back to raw JSON: %v\n", err)
+		return nil, err
 	}
 
 	// parse into struct
 	var resp tx.Transaction
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
-		log.Fatalln("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response:", err)
+		return nil, err
 	}
 	return &resp, nil
 }
