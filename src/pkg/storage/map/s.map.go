@@ -18,6 +18,8 @@ func New() *MapStorage {
 }
 
 func (m *MapStorage) TxGet(txid string) (*tx.Tx, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.txs[txid], nil
 }
 
