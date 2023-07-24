@@ -115,7 +115,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	err = json.Unmarshal(data, &ret)
 
 	if err != nil {
-		log.Log.Errorf("RPC cli parsing json err: %s", err.Error())
+		log.Log.Errorf("RPC cli parsing json err: %s\nbody data: %s", err.Error(), string(data))
 		return nil, err
 	}
 
