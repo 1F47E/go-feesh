@@ -5,7 +5,6 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
 	log "go-btc-scan/src/pkg/logger"
-	"strconv"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
 	"go-btc-scan/src/pkg/entity/btc/txpool"
@@ -108,19 +107,14 @@ func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
 		if c.pool.HasTx(tx.Hash) {
 			continue
 		}
-		// parse from string to int64
-		timeunix, _ := strconv.ParseInt(tx.Time, 10, 64)
-		weight, _ := strconv.ParseUint(tx.Weight, 10, 64)
-		fee, _ := strconv.ParseUint(tx.Fee, 10, 64)
-		feeKb, _ := strconv.ParseUint(tx.FeePerKB, 10, 64)
 
 		// remap to tx model
 		tx := &mtx.Tx{
 			Hash:   tx.Hash,
-			Time:   time.Unix(timeunix, 0),
-			Weight: weight,
-			Fee:    fee,
-			FeeKb:  feeKb,
+			Time:   time.Unix(tx.Time, 0),
+			Weight: tx.Weight,
+			Fee:    tx.Fee,
+			FeeKb:  tx.FeePerKB,
 		}
 
 		c.pool.AddTx(tx)

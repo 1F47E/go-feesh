@@ -3,10 +3,10 @@ package txpool
 // struct for custom getrawmempool response
 type TxPool struct {
 	Hash     string `json:"txid"`
-	Time     string `json:"time"`
-	Weight   string `json:"weight"`
-	Fee      string `json:"fee"`
-	FeePerKB string `json:"fee_kb"`
+	Time     int64  `json:"time"`
+	Weight   uint64 `json:"weight"`
+	Fee      uint64 `json:"fee"`
+	FeePerKB uint64 `json:"fee_kb"`
 }
 
 // struct to parse response from rawmempool true (verbose)
