@@ -47,7 +47,9 @@ func (c *Core) Start() {
 	}
 	go c.workerPool()
 	// TODO: make a batch of parsers
-	go c.workerTxParser()
+	for i := 0; i < 10; i++ {
+		go c.workerTxParser()
+	}
 
 	go c.workerTxAdder()
 }
@@ -79,20 +81,23 @@ func (c *Core) workerTxParser() {
 				continue
 			}
 			c.poolTxResCh <- txUpdated
-			log.Log.Debugf("[%s] parsed tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
+			log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
 		}
 	}
 }
 
 func (c *Core) workerTxAdder() {
+	name := "workerTxAdder"
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case tx := <-c.poolTxResCh:
+			log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
 			c.mu.Lock()
 			c.pool.AddTx(tx)
 			c.mu.Unlock()
+			log.Log.Debugf("[%s] added tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
 		}
 	}
 }
