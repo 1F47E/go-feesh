@@ -4,6 +4,8 @@ package txpool
 type TxPool struct {
 	Hash     string `json:"txid"`
 	Time     int64  `json:"time"`
+	Size     uint64 `json:"size"`
+	Vsize    uint64 `json:"vsize"`
 	Weight   uint64 `json:"weight"`
 	Fee      uint64 `json:"fee"`
 	FeePerKB uint64 `json:"fee_kb"`
