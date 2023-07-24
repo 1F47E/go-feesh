@@ -5,6 +5,7 @@ import (
 	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/core/pool"
 	log "go-btc-scan/src/pkg/logger"
+	"math/rand"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
@@ -74,14 +75,17 @@ func (c *Core) workerTxParser() {
 			return
 		case tx := <-c.poolTxCh:
 			log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
+			// sleep randomly
+			time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
 			// do tx parsing
 			txUpdated, err := c.parsePoolTx(tx)
 			if err != nil {
 				log.Log.Errorf("error on parsePoolTx: %v\n", err)
 				continue
 			}
-			c.poolTxResCh <- txUpdated
 			log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
+			c.poolTxResCh <- txUpdated
+			log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
 		}
 	}
 }
