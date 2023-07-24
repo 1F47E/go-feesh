@@ -8,8 +8,8 @@ import (
 	"go-btc-scan/src/pkg/entity/btc/info"
 	"go-btc-scan/src/pkg/entity/btc/peer"
 	"go-btc-scan/src/pkg/entity/btc/tx"
+	log "go-btc-scan/src/pkg/logger"
 	"io"
-	"log"
 	"net/http"
 	"time"
 )
@@ -98,6 +98,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		log.Log.Errorf("RPC cli DO error: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -106,6 +107,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	// read response to bytes
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Log.Errorf("RPC cli reading body err: %s", err.Error())
 		return nil, err
 	}
 
@@ -113,6 +115,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	err = json.Unmarshal(data, &ret)
 
 	if err != nil {
+		log.Log.Errorf("RPC cli parsing json err: %s", err.Error())
 		return nil, err
 	}
 
