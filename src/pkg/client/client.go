@@ -71,7 +71,7 @@ func NewClient(host, user, password string) (*Client, error) {
 	}
 	return &Client{
 		client: &http.Client{
-			Timeout: time.Second * 600, // getrawmempool verbose can take a long fucking time
+			Timeout: time.Second * 3, // getrawmempool verbose can take a long fucking time
 		},
 		host:     host,
 		user:     user,
