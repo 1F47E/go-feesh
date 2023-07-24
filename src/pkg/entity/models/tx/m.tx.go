@@ -1,21 +1,21 @@
 package tx
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 )
 
 type Tx struct {
-	Hash      string    `json:"hash"`
-	Time      time.Time `json:"time"`
-	Block     string    `json:"block"`
-	Size      int       `json:"size"`
-	Weight    uint64    `json:"weight"`
-	AmountIn  uint64    `json:"amount_in"`
-	AmountOut uint64    `json:"amount_out"`
-	Fee       uint64    `json:"fee"`
+	Hash string    `json:"hash"`
+	Time time.Time `json:"time"`
+	// Block     string    `json:"block"`
+	// Size      int       `json:"size"`
+	Weight    uint64 `json:"weight"`
+	AmountIn  uint64 `json:"amount_in"`
+	AmountOut uint64 `json:"amount_out"`
+	Fee       uint64 `json:"fee"`
+	FeeKb     uint64 `json:"fee_kb"`
 }
 
 func (t *Tx) IsParsed() bool {
@@ -42,7 +42,7 @@ func (t *Tx) FeeString() string {
 	return btcutil.Amount(t.Fee).String()
 }
 
-func (t *Tx) FeePerByte() string {
-	feeF := float64(t.Fee) / float64(t.Size)
-	return fmt.Sprintf("%.1f", feeF)
-}
+// func (t *Tx) FeePerByte() string {
+// 	feeF := float64(t.Fee) / float64(t.Size)
+// 	return fmt.Sprintf("%.1f", feeF)
+// }

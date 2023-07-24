@@ -112,6 +112,7 @@ func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
 		timeunix, _ := strconv.ParseInt(tx.Time, 10, 64)
 		weight, _ := strconv.ParseUint(tx.Weight, 10, 64)
 		fee, _ := strconv.ParseUint(tx.Fee, 10, 64)
+		feeKb, _ := strconv.ParseUint(tx.FeePerKB, 10, 64)
 
 		// remap to tx model
 		tx := &mtx.Tx{
@@ -119,6 +120,7 @@ func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
 			Time:   time.Unix(timeunix, 0),
 			Weight: weight,
 			Fee:    fee,
+			FeeKb:  feeKb,
 		}
 
 		c.pool.AddTx(tx)
