@@ -21,6 +21,7 @@ func (a *Api) NodeInfo(c *fiber.Ctx) error {
 
 type PoolResponse struct {
 	Height int       `json:"height"`
+	Size   int       `json:"size"`
 	Txs    []*mtx.Tx `json:"txs"`
 }
 
@@ -29,6 +30,7 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 	txs := a.core.GetPoolTxsRecent(limit)
 	ret := PoolResponse{
 		Height: a.core.GetPoolHeight(),
+		Size:   a.core.GetPoolSize(),
 		Txs:    txs,
 	}
 	return c.JSON(ret)

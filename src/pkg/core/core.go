@@ -58,7 +58,7 @@ func (c *Core) bootstrap() {
 }
 
 func (c *Core) workerPool() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	defer func() {
 		ticker.Stop()
 	}()
@@ -74,6 +74,7 @@ func (c *Core) workerPool() {
 				log.Log.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
+			log.Log.Debugf("block height: %d\n", info.Blocks)
 
 			// get ordered list of pool tsx. new first
 			poolTxs, err := c.cli.RawMempool()
@@ -81,6 +82,7 @@ func (c *Core) workerPool() {
 				log.Log.Errorf("error on rawmempool: %v\n", err)
 				continue
 			}
+			log.Log.Debugf("pool txs: %d\n", len(poolTxs))
 
 			c.parsePoolTxs(poolTxs, info.Blocks)
 		}
@@ -89,9 +91,16 @@ func (c *Core) workerPool() {
 
 func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
 	c.mu.Lock()
+	log.Log.Debugf("parsing pool txs: %d\n", len(txs))
 	if c.pool.BlockHeight != blockHeight {
+		log.Log.Debugf("reset pool block height: %d\n", blockHeight)
 		c.pool.Reset(blockHeight)
 	}
+	sizeOG := c.pool.Size()
+	// debug. cut tx list
+	// txs = txs[:10]
+	// TODO: split into batches
+
 	for _, txid := range txs {
 		// parse only new
 		if c.pool.HasTx(txid) {
@@ -114,14 +123,23 @@ func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
 		tx := &mtx.Tx{
 			Hash:      txid,
 			Time:      time.Now(),
+			Size:      rpcTx.Size,
+			Weight:    rpcTx.Weight,
 			AmountIn:  amountIn,
 			AmountOut: rpcTx.GetTotalOut(),
 		}
-		if tx.AmountIn == 0 && tx.AmountOut == 0 {
+		if tx.AmountIn != 0 && tx.AmountOut != 0 {
 			tx.Fee = tx.AmountIn - tx.AmountOut
 		}
 
 		c.pool.AddTx(tx)
+	}
+	newSize := c.pool.Size()
+	added := newSize - sizeOG
+	if added > 0 {
+		log.Log.Debugf("parsing done. new tx batch %d added, pool size: %d\n", added, c.pool.Size())
+	} else {
+		log.Log.Debugf("parsing done. no new txs added, pool size: %d\n", c.pool.Size())
 	}
 
 	c.mu.Unlock()
@@ -132,6 +150,10 @@ func (c *Core) parsePoolTxs(txs []string, blockHeight int) {
 
 func (c *Core) GetPoolTxs() []*mtx.Tx {
 	return c.pool.GetTxs()
+}
+
+func (c *Core) GetPoolSize() int {
+	return c.pool.Size()
 }
 
 func (c *Core) GetPoolTxsRecent(limit int) []*mtx.Tx {

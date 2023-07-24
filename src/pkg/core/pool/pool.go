@@ -46,6 +46,10 @@ func (p *Pool) GetTxs() []*tx.Tx {
 	return p.txs
 }
 
+func (p *Pool) Size() int {
+	return len(p.txs)
+}
+
 // get recent N txs from pool sorted by time DESC
 func (p *Pool) GetTxsRecent(limit int) []*tx.Tx {
 	if len(p.txs) == 0 {
