@@ -112,6 +112,8 @@ func (c *Core) parsePoolTxs(txs []txpool.TxPool, blockHeight int) {
 		tx := &mtx.Tx{
 			Hash:   tx.Hash,
 			Time:   time.Unix(tx.Time, 0),
+			Size:   tx.Size,
+			Vsize:  tx.Vsize,
 			Weight: tx.Weight,
 			Fee:    tx.Fee,
 			FeeKb:  tx.FeePerKB,
