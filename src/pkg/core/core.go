@@ -82,10 +82,11 @@ func (c *Core) workerTxParser() {
 			// do tx parsing
 			max := 10
 			var err error
+			txUpdated := new(mtx.Tx)
 			for i := 0; i <= max; i++ {
 				// sleep randomly
 				time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
-				tx, err = c.parsePoolTx(tx)
+				txUpdated, err = c.parsePoolTx(tx)
 				if err != nil {
 					if err.Error() == client.ERR_5xx {
 						log.Log.Errorf("error 5xx, retrying %d/%d\n", i+1, max)
@@ -97,7 +98,7 @@ func (c *Core) workerTxParser() {
 				break
 			}
 			// log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
-			c.poolTxResCh <- tx
+			c.poolTxResCh <- txUpdated
 			// log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
 		}
 	}
