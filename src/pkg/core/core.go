@@ -47,8 +47,8 @@ func (c *Core) Start() {
 		c.pool.BlockHeight = info.Blocks
 	}
 	go c.workerPool()
-	// TODO: make a batch of parsers
-	for i := 0; i < 10; i++ {
+	// make a batch of parsers
+	for i := 0; i < 1000; i++ {
 		go c.workerTxParser()
 	}
 
@@ -69,12 +69,16 @@ func (c *Core) bootstrap() {
 
 func (c *Core) workerTxParser() {
 	name := "workerTxParser"
+	log.Log.Infof("[%s] started\n", name)
+	defer func() {
+		log.Log.Infof("[%s] stopped\n", name)
+	}()
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case tx := <-c.poolTxCh:
-			log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
+			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
 			// sleep randomly
 			time.Sleep(time.Duration(rand.Intn(300)) * time.Millisecond)
 			// do tx parsing
@@ -83,21 +87,25 @@ func (c *Core) workerTxParser() {
 				log.Log.Errorf("error on parsePoolTx: %v\n", err)
 				continue
 			}
-			log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
+			// log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
 			c.poolTxResCh <- txUpdated
-			log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
+			// log.Log.Debugf("[%s] sent tx: %s\n", name, tx.Hash)
 		}
 	}
 }
 
 func (c *Core) workerTxAdder() {
 	name := "workerTxAdder"
+	log.Log.Infof("[%s] started\n", name)
+	defer func() {
+		log.Log.Infof("[%s] stopped\n", name)
+	}()
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case tx := <-c.poolTxResCh:
-			log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
+			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
 			c.mu.Lock()
 			c.pool.AddTx(tx)
 			c.mu.Unlock()
@@ -107,8 +115,11 @@ func (c *Core) workerTxAdder() {
 }
 
 func (c *Core) workerPool() {
+	name := "workerPool"
+	log.Log.Infof("[%s] started\n", name)
 	ticker := time.NewTicker(3 * time.Second)
 	defer func() {
+		log.Log.Infof("[%s] stopped\n", name)
 		ticker.Stop()
 	}()
 
