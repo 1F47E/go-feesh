@@ -209,6 +209,8 @@ func (c *Core) parsePoolTx(tx *mtx.Tx) (*mtx.Tx, error) {
 // pool access from API
 
 func (c *Core) GetPoolTxs() []*mtx.Tx {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.pool.GetTxs()
 }
 
@@ -217,6 +219,8 @@ func (c *Core) GetPoolSize() int {
 }
 
 func (c *Core) GetPoolTxsRecent(limit int) []*mtx.Tx {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.pool.GetTxsRecent(limit)
 }
 
