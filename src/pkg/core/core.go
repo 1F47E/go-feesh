@@ -3,39 +3,38 @@ package core
 import (
 	"context"
 	"go-btc-scan/src/pkg/client"
-	"go-btc-scan/src/pkg/core/pool"
 	log "go-btc-scan/src/pkg/logger"
 	"go-btc-scan/src/pkg/storage"
 	"math/rand"
 
 	"go-btc-scan/src/pkg/entity/btc/info"
-	mblock "go-btc-scan/src/pkg/entity/models/block"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	"sync"
 	"time"
 )
 
 type Core struct {
-	ctx         context.Context
-	mu          *sync.Mutex
-	cli         *client.Client
-	pool        *pool.Pool
-	blocks      []*mblock.Block
+	ctx    context.Context
+	mu     *sync.Mutex
+	cli    *client.Client
+	height int
+	// pool *pool.Pool
+	storage storage.PoolRepository
+	// blocks      []*mblock.Block
 	poolTxCh    chan *mtx.Tx
 	poolTxResCh chan *mtx.Tx
-	storage     storage.TxRepository
 }
 
-func NewCore(ctx context.Context, cli *client.Client, strg storage.TxRepository) *Core {
+func NewCore(ctx context.Context, cli *client.Client, s storage.PoolRepository) *Core {
 	return &Core{
-		ctx:         ctx,
-		mu:          &sync.Mutex{},
-		cli:         cli,
-		pool:        pool.NewPool(),
-		blocks:      make([]*mblock.Block, 0),
+		ctx: ctx,
+		mu:  &sync.Mutex{},
+		cli: cli,
+		// pool: pool.NewPool(s),
+		storage: s,
+		// blocks:      make([]*mblock.Block, 0),
 		poolTxCh:    make(chan *mtx.Tx),
 		poolTxResCh: make(chan *mtx.Tx),
-		storage:     strg,
 	}
 }
 
@@ -47,7 +46,7 @@ func (c *Core) Start() {
 	} else {
 		// even if its fails - having block 0 will update pool txs list every time
 		// its just for performance reasons
-		c.pool.BlockHeight = info.Blocks
+		c.height = info.Blocks
 	}
 	go c.workerGetMemPool()
 	// make a batch of parsers
@@ -95,7 +94,8 @@ func (c *Core) workerTxParser() {
 			}
 
 			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
-			// do tx parsing
+
+			// parse tx with retry
 			max := 10
 			txFull := new(mtx.Tx)
 			for i := 0; i <= max; i++ {
@@ -113,6 +113,7 @@ func (c *Core) workerTxParser() {
 				break
 			}
 			// log.Log.Debugf("[%s] parsed tx: %s\n", name, tx.Hash)
+
 			// save tx
 			err = c.storage.TxAdd(txFull)
 			if err != nil {
@@ -136,9 +137,10 @@ func (c *Core) workerTxAdder() {
 			return
 		case tx := <-c.poolTxResCh:
 			// log.Log.Debugf("[%s] got tx: %s\n", name, tx.Hash)
-			c.mu.Lock()
-			c.pool.AddTx(tx)
-			c.mu.Unlock()
+			// _ = c.storage.PoolAdd(tx)
+			// c.mu.Lock()
+			c.storage.PoolAddTx(tx)
+			// c.mu.Unlock()
 			// log.Log.Debugf("[%s] added tx: %s\npool size: %d\n", name, tx.Hash, c.pool.Size())
 		}
 	}
@@ -174,15 +176,27 @@ func (c *Core) workerGetMemPool() {
 			}
 			log.Log.Debugf("pool txs: %d\n", len(poolTxs))
 
+			// update pool list []string
+			poolList := make([]string, len(poolTxs))
+			for i, tx := range poolTxs {
+				poolList[i] = tx.Hash
+			}
+			c.storage.PoolListUpdate(poolList)
+
 			// reset pool if new block
-			if c.pool.BlockHeight != info.Blocks {
+			if c.height != info.Blocks {
 				log.Log.Debugf("reset pool block height: %d\n", info.Blocks)
-				c.pool.Reset(info.Blocks)
+				_ = c.storage.PoolReset()
+				c.height = info.Blocks
 			}
 
 			// ramap btc tx to model tx and send them to additional parsing
 			// copy cache to avoid locks
-			cache := c.pool.GetCacheCopy()
+			cache, err := c.storage.PoolGetCache()
+			if err != nil {
+				log.Log.Errorf("error on storage.PoolGet: %v\n", err)
+				cache = make(map[string]struct{})
+			}
 
 			// TODO: optimize later - do not parse txs that are already in pool
 			for _, tx := range poolTxs {
@@ -204,7 +218,7 @@ func (c *Core) workerGetMemPool() {
 				c.poolTxCh <- mt
 			}
 			// log storage size
-			log.Log.Debugf("storage size: %d\n", c.storage.Size())
+			log.Log.Debugf("storage size: %d\n", c.storage.PoolSize())
 		}
 	}
 }
@@ -222,31 +236,38 @@ func (c *Core) parsePoolTx(tx *mtx.Tx) (*mtx.Tx, error) {
 
 // pool access from API
 
-func (c *Core) GetPoolTxs() []*mtx.Tx {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.pool.GetTxs()
+func (c *Core) GetPoolTxs() ([]*mtx.Tx, error) {
+	return c.storage.PoolListGet()
 }
 
-func (c *Core) GetPoolSize() int {
-	return c.pool.Size()
+func (c *Core) GetPoolSize() uint {
+	return c.storage.PoolSize()
 }
 
-func (c *Core) GetPoolTxsRecent(limit int) []*mtx.Tx {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.pool.GetTxsRecent(limit)
+func (c *Core) GetPoolTxsRecent(limit int) ([]*mtx.Tx, error) {
+	allTxs, err := c.storage.PoolListGet()
+	if err != nil {
+		return nil, err
+	}
+	if len(allTxs) <= limit {
+		return allTxs, nil
+	}
+	return allTxs[:limit], nil
 }
 
 func (c *Core) GetPoolHeight() int {
-	return c.pool.BlockHeight
+	return c.height
 }
 
 // TODO: cache this
-func (c *Core) GetTotalAmount() uint64 {
+func (c *Core) GetTotalAmount() (uint64, error) {
 	var total uint64
-	for _, tx := range c.pool.GetTxs() {
+	poolTxs, err := c.storage.PoolListGet()
+	if err != nil {
+		return 0, err
+	}
+	for _, tx := range poolTxs {
 		total += tx.AmountOut
 	}
-	return total
+	return total, nil
 }

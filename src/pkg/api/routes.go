@@ -1,8 +1,6 @@
 package api
 
 import (
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
-
 	fiber "github.com/gofiber/fiber/v2"
 )
 
@@ -17,24 +15,4 @@ func (a *Api) NodeInfo(c *fiber.Ctx) error {
 		return c.Status(500).SendString(err.Error())
 	}
 	return c.JSON(info)
-}
-
-type PoolResponse struct {
-	Height int       `json:"height"`
-	Size   int       `json:"size"`
-	Amount uint64    `json:"amount"`
-	Txs    []*mtx.Tx `json:"txs"`
-}
-
-func (a *Api) Pool(c *fiber.Ctx) error {
-	limit := c.QueryInt("limit", 100)
-	txs := a.core.GetPoolTxsRecent(limit)
-	amount := a.core.GetTotalAmount()
-	ret := PoolResponse{
-		Height: a.core.GetPoolHeight(),
-		Size:   a.core.GetPoolSize(),
-		Amount: amount,
-		Txs:    txs,
-	}
-	return c.JSON(ret)
 }
