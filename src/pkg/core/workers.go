@@ -208,13 +208,13 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			sort.Slice(res, func(i, j int) bool {
 				return res[i].Fee > res[j].Fee
 			})
-			totalWeight := uint64(0)
-			for i, tx := range res {
-				totalWeight += uint64(tx.Weight)
-				res[i].Fits = true
-				if totalWeight > BLOCK_SIZE {
+			var totalWeight uint32
+			for i := range res {
+				if totalWeight+res[i].Weight > BLOCK_SIZE {
 					break
 				}
+				totalWeight += res[i].Weight
+				res[i].Fits = true
 			}
 
 			// sort by time
