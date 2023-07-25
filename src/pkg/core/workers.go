@@ -79,7 +79,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 				if exists != nil {
 					continue
 				}
-				log.Log.Debugf("%s new tx, sending to parser: %s\n", name, tx.Txid)
+				// log.Log.Debugf("%s new tx, sending to parser: %s\n", name, tx.Txid)
 				c.parserJobCh <- tx.Txid
 			}
 		}
@@ -100,7 +100,7 @@ func (c *Core) workerTxParser() {
 			var err error
 
 			// parse tx with retry
-			log.Log.Debugf("%s parsing tx: %s\n", name, txid)
+			// log.Log.Debugf("%s parsing tx: %s\n", name, txid)
 			maxRetry := 10
 			btx := new(tx.Transaction)
 			for i := 0; i <= maxRetry; i++ {
@@ -120,7 +120,7 @@ func (c *Core) workerTxParser() {
 				}
 				break
 			}
-			log.Log.Debugf("%s parsed tx txid: %s\n", name, txid)
+			// log.Log.Debugf("%s parsed tx txid: %s\n", name, txid)
 			// remap raw tx to model
 			tx := mtx.Tx{
 				Hash:   txid,
@@ -162,6 +162,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// order by time
 
 			// TODO: create another copy sorted by fee, calc fee buckets
+			now := time.Now()
 
 			res := make([]mtx.Tx, 0)
 			c.mu.Lock()
@@ -196,6 +197,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.totalFee = fee
 			c.totalWeight = weight
 			c.mu.Unlock()
+			log.Log.Debugf("%s pool sorted, took: %v\n", name, time.Since(now))
+			log.Log.Debugf("%s total txs: %d\n", name, len(res))
 		}
 	}
 }

@@ -59,12 +59,11 @@ func (c *Core) Start() {
 	}
 
 	go c.workerPoolPuller(1 * time.Second)
-	// make a batch of parsers
 
-	// for i := 0; i < 420; i++ {
-	// 	go c.workerTxParser()
-	// }
-	go c.workerTxParser()
+	// make a batch of parsers
+	for i := 0; i < 420; i++ {
+		go c.workerTxParser()
+	}
 
 	go c.workerPoolSorter(1 * time.Second)
 }
