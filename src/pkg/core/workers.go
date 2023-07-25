@@ -174,7 +174,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// collect parsed txs based on pool copy
 			// also count totals
 			var amount, fee, weight uint64
-			buckets := []uint{2, 5, 10, 20, 50, 100, 200, 499}
+			buckets := []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499}
 			feeBuckets := make([]uint, len(buckets)+1)
 			for _, tx := range c.poolCopy {
 				// get parsed tx
