@@ -209,9 +209,9 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				return res[i].Fee > res[j].Fee
 			})
 			totalWeight := uint64(0)
-			for _, tx := range res {
+			for i, tx := range res {
 				totalWeight += uint64(tx.Weight)
-				tx.Fits = true
+				res[i].Fits = true
 				if totalWeight > BLOCK_SIZE {
 					break
 				}
