@@ -181,6 +181,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				if parsedTx == nil {
 					continue
 				}
+				parsedTx.Fits = false
 				res = append(res, *parsedTx)
 
 				// totals
