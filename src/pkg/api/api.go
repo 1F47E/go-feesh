@@ -1,9 +1,9 @@
 package api
 
 import (
+	"go-btc-scan/src/pkg/config"
 	"go-btc-scan/src/pkg/core"
 	log "go-btc-scan/src/pkg/logger"
-	"os"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -16,6 +16,8 @@ type Api struct {
 	app  *fiber.App
 	core *core.Core
 }
+
+var cfg = config.NewConfig()
 
 func NewApi(core *core.Core) *Api {
 	app := fiber.New(
@@ -42,7 +44,7 @@ func NewApi(core *core.Core) *Api {
 // will block
 func (a *Api) Listen() error {
 	log.Log.Info("Starting server...")
-	err := a.app.Listen(os.Getenv("API_HOST"))
+	err := a.app.Listen(cfg.ApiHost)
 	if err != nil {
 		log.Log.Fatal(err)
 	}

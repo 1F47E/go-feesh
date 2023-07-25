@@ -50,7 +50,3 @@ func (r *Redis) TxAdd(tx *tx.Tx) error {
 	}
 	return r.db.Set(r.ctx, tx.Hash, data, 0).Err()
 }
-
-func (r *Redis) Size() uint {
-	return uint(r.db.DBSize(r.ctx).Val())
-}

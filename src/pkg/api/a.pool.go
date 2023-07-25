@@ -7,12 +7,13 @@ import (
 )
 
 type PoolResponse struct {
-	Height int      `json:"height"`
-	Size   int      `json:"size"`
-	Amount uint64   `json:"amount"`
-	Weight uint64   `json:"weight"`
-	Fee    uint64   `json:"fee"`
-	Txs    []mtx.Tx `json:"txs"`
+	Height     int           `json:"height"`
+	Size       int           `json:"size"`
+	Amount     uint64        `json:"amount"`
+	Weight     uint64        `json:"weight"`
+	Fee        uint64        `json:"fee"`
+	FeeBuckets map[uint]uint `json:"fee_buckets"`
+	Txs        []mtx.Tx      `json:"txs"`
 }
 
 func (a *Api) Pool(c *fiber.Ctx) error {
@@ -22,12 +23,13 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		return c.Status(500).SendString(err.Error())
 	}
 	ret := PoolResponse{
-		Height: a.core.GetHeight(),
-		Size:   a.core.GetPoolSize(),
-		Amount: a.core.GetTotalAmount(),
-		Weight: a.core.GetTotalWeight(),
-		Fee:    a.core.GetTotalFee(),
-		Txs:    txs,
+		Height:     a.core.GetHeight(),
+		Size:       a.core.GetPoolSize(),
+		Amount:     a.core.GetTotalAmount(),
+		Weight:     a.core.GetTotalWeight(),
+		Fee:        a.core.GetTotalFee(),
+		FeeBuckets: a.core.GetFeeBuckets(),
+		Txs:        txs,
 	}
 	return c.JSON(ret)
 }

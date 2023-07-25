@@ -29,7 +29,3 @@ func (m *MapStorage) TxAdd(tx tx.Tx) error {
 	m.txs[tx.Hash] = &tx
 	return nil
 }
-
-func (m *MapStorage) Size() uint {
-	return uint(len(m.txs))
-}

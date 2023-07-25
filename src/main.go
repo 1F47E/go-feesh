@@ -4,28 +4,30 @@ import (
 	"context"
 	"go-btc-scan/src/pkg/api"
 	"go-btc-scan/src/pkg/client"
+	"go-btc-scan/src/pkg/config"
 	"go-btc-scan/src/pkg/core"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	smap "go-btc-scan/src/pkg/storage/map"
 	"go-btc-scan/src/pkg/utils"
 	"log"
-	"os"
 )
 
 var cli *client.Client
 
 func init() {
-	var err error
-	nodeUrl := os.Getenv("RPC_HOST")
-	username := os.Getenv("RPC_USER")
-	password := os.Getenv("RPC_PASSWORD")
-	cli, err = client.NewClient(nodeUrl, username, password)
-	if err != nil {
-		log.Fatalln("error creating client:", err)
-	}
+
 }
 
 func main() {
+	var err error
+	cfg := config.NewConfig()
+
+	// create RPC client
+	cli, err = client.NewClient(cfg.RpcHost, cfg.RpcUser, cfg.RpcPass)
+	if err != nil {
+		log.Fatalln("error creating client:", err)
+	}
+
 	// get node info
 	info, err := cli.GetInfo()
 	if err != nil {

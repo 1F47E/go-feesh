@@ -7,5 +7,4 @@ import (
 type PoolRepository interface {
 	TxGet(txid string) (*mtx.Tx, error)
 	TxAdd(tx mtx.Tx) error
-	Size() uint
 }

@@ -27,6 +27,8 @@ type Core struct {
 	totalFee    uint64
 	totalAmount uint64
 	totalWeight uint64
+	feeBuckets  map[uint]uint
+
 	poolCopy    []txpool.TxPool
 	poolCopyMap map[string]txpool.TxPool
 	poolSorted  []mtx.Tx
@@ -105,6 +107,10 @@ func (c *Core) GetTotalAmount() uint64 {
 
 func (c *Core) GetTotalFee() uint64 {
 	return c.totalFee
+}
+
+func (c *Core) GetFeeBuckets() map[uint]uint {
+	return c.feeBuckets
 }
 
 func (c *Core) GetTotalWeight() uint64 {
