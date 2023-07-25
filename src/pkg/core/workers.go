@@ -200,9 +200,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// calc weight buckets
 			// sort by fee
 			resF := make([]mtx.Tx, len(res))
-			for i, tx := range res {
-				resF[i] = tx
-			}
+			copy(resF, res)
 			sort.Slice(resF, func(i, j int) bool {
 				return resF[i].Fee > resF[j].Fee
 			})
@@ -210,7 +208,6 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// calc how many txs will fit the block
 			buckets := []uint{2, 5, 10, 20, 50, 100, 200, 499}
 			feeBuckets := make([]uint, len(buckets)+1)
-			var weightCount uint64
 			for _, tx := range resF {
 				feeB := tx.FeePerByte()
 				// get correct bucket
@@ -227,11 +224,6 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				}
 				feeBuckets[bucket]++
 
-				// stop if we hit the block size
-				weightCount += uint64(tx.Weight)
-				if weightCount > BLOCK_SIZE {
-					break
-				}
 			}
 			bucketsMap := make(map[uint]uint)
 			for i, b := range buckets {
