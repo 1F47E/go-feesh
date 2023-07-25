@@ -82,8 +82,6 @@ func NewClient(host, user, password string) (*Client, error) {
 var ERR_5xx = "5xx"
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
-	// TODO: add retries
-	// log.Printf("\n\n====== HTTP CLIENT cmd %s : %s\n", r.Method, r.Params)
 	jr, err := json.Marshal(r)
 	if err != nil {
 		return nil, err

@@ -85,7 +85,8 @@ curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"json
 */
 
 type Transaction struct {
-	Hash          string `json:"hash"`
+	Txid string `json:"txid"`
+	// Hash          string `json:"hash"`
 	Version       int    `json:"version"`
 	Locktime      int    `json:"locktime"`
 	Vin           []Vin  `json:"vin"`

@@ -2,11 +2,11 @@ package txpool
 
 // struct for custom getrawmempool response
 type TxPool struct {
-	Hash     string `json:"txid"`
+	Txid     string `json:"txid"`
 	Time     int64  `json:"time"`
-	Size     uint64 `json:"size"`
-	Vsize    uint64 `json:"vsize"`
-	Weight   uint64 `json:"weight"`
+	Size     uint32 `json:"size"`
+	Vsize    uint32 `json:"vsize"`
+	Weight   uint32 `json:"weight"`
 	Fee      uint64 `json:"fee"`
 	FeePerKB uint64 `json:"fee_kb"`
 }
@@ -33,7 +33,8 @@ type TxPool struct {
   }
 */
 type TxPoolVerbose struct {
-	Hash         string   `json:"hash"` // hash is the key from the response
+	Txid         string   `json:"txid"`
+	Hash         string   `json:"hash"`
 	Size         int      `json:"size"`
 	VSize        int      `json:"vsize"`
 	Weight       int      `json:"weight"`
