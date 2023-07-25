@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"go-btc-scan/src/pkg/client"
+	"go-btc-scan/src/pkg/config"
 	log "go-btc-scan/src/pkg/logger"
 	"go-btc-scan/src/pkg/storage"
 	"time"
@@ -14,6 +15,8 @@ import (
 )
 
 const BLOCK_SIZE = 4_000_000
+
+var cfg = config.NewConfig()
 
 type Core struct {
 	ctx context.Context
@@ -61,7 +64,8 @@ func (c *Core) Start() {
 	go c.workerPoolPuller(1 * time.Second)
 
 	// make a batch of parsers
-	for i := 0; i < 420; i++ {
+	// each parse makes a new RPC connection on every job
+	for i := 0; i < cfg.RpcLimit; i++ {
 		go c.workerTxParser()
 	}
 
