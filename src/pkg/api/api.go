@@ -1,7 +1,6 @@
 package api
 
 import (
-	"go-btc-scan/src/pkg/config"
 	"go-btc-scan/src/pkg/core"
 	log "go-btc-scan/src/pkg/logger"
 
@@ -16,8 +15,6 @@ type Api struct {
 	app  *fiber.App
 	core *core.Core
 }
-
-var cfg = config.NewConfig()
 
 func NewApi(core *core.Core) *Api {
 	app := fiber.New(
@@ -34,8 +31,9 @@ func NewApi(core *core.Core) *Api {
 
 	// setup routes
 	api := a.app.Group("/v0")
-	api.Get("/monitor", monitor.New())
 	api.Get("/ping", a.Ping)
+	api.Get("/monitor", monitor.New())
+	api.Get("/stats", a.Stats)
 	api.Get("/info", a.NodeInfo)
 	api.Get("/pool", a.Pool)
 	return &a
@@ -44,7 +42,7 @@ func NewApi(core *core.Core) *Api {
 // will block
 func (a *Api) Listen() error {
 	log.Log.Info("Starting server...")
-	err := a.app.Listen(cfg.ApiHost)
+	err := a.app.Listen(a.core.Cfg.ApiHost)
 	if err != nil {
 		log.Log.Fatal(err)
 	}

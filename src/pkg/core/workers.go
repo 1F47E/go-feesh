@@ -1,7 +1,9 @@
 package core
 
 import (
+	"fmt"
 	"go-btc-scan/src/pkg/client"
+	"go-btc-scan/src/pkg/config"
 	"go-btc-scan/src/pkg/entity/btc/tx"
 	"go-btc-scan/src/pkg/entity/btc/txpool"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
@@ -12,11 +14,11 @@ import (
 )
 
 func (c *Core) workerPoolPuller(period time.Duration) {
-	name := "[wPoolPuller]"
-	log.Log.Infof("[%s] started\n", name)
+	l := log.Log.WithField("context", "[workerPoolPuller]")
+	l.Infof("started\n")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Log.Infof("[%s] stopped\n", name)
+		l.Infof(" stopped\n")
 		ticker.Stop()
 	}()
 
@@ -40,23 +42,25 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			// get ordered list of pool tsx. new first
 			poolTxs, err := c.cli.RawMempool()
 			if err != nil {
-				log.Log.Errorf("%s error on rawmempool: %v\n", name, err)
+				l.Errorf("error on rawmempool: %v\n", err)
 				continue
 			}
 			if len(poolTxs) == 0 {
 				continue
 			}
+
 			// check if we have new txs
-			new := 0
+			hasNew := false
 			for _, tx := range poolTxs {
 				if _, ok := c.poolCopyMap[tx.Txid]; !ok {
-					new++
+					hasNew = true
+					break
 				}
 			}
-			if new == 0 {
+			if !hasNew {
 				continue
 			}
-			log.Log.Debugf("%s got %d new txs\n", name, new)
+			l.Debugf("got some new txs\n")
 
 			// copy pool txs mem for later reference what pool have
 			c.mu.Lock()
@@ -73,7 +77,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 				// skip if already parsed
 				exists, err := c.storage.TxGet(tx.Txid)
 				if err != nil {
-					log.Log.Errorf("%s error on txget: %v\n", name, err)
+					l.Errorf("error on txget: %v\n", err)
 					continue
 				}
 				if exists != nil {
@@ -86,11 +90,12 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 	}
 }
 
-func (c *Core) workerTxParser() {
-	name := "[workerTxParser]"
-	log.Log.Tracef("%s started\n", name)
+// log carefull, there can be a lot of workers
+func (c *Core) workerTxParser(n int) {
+	l := log.Log.WithField("context", fmt.Sprintf("[workerTxParser] #%d", n))
+	l.Trace("started\n")
 	defer func() {
-		log.Log.Debugf("%s stopped\n", name)
+		l.Debug("stopped\n")
 	}()
 	for {
 		select {
@@ -108,14 +113,14 @@ func (c *Core) workerTxParser() {
 				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
 				btx, err = c.cli.TransactionGet(txid)
 				if err != nil {
-					log.Log.Errorf("%s error on getrawtransaction: %v\n", name, err)
+					l.Errorf("error on getrawtransaction: %v\n", err)
 				}
 				if err != nil {
 					if err.Error() == client.ERR_5xx {
-						log.Log.Errorf("%s error 5xx, retrying %d/%d\n", i+1, name, maxRetry)
+						l.Errorf("error 5xx, retrying %d/%d\n", i+1, maxRetry)
 						continue
 					}
-					log.Log.Errorf("%s error on parsePoolTx: %v\n", name, err)
+					l.Errorf("error on parsePoolTx: %v\n", err)
 					continue
 				}
 				break
@@ -136,21 +141,21 @@ func (c *Core) workerTxParser() {
 				// save tx
 				err = c.storage.TxAdd(tx)
 				if err != nil {
-					log.Log.Errorf("%s error on storage.TxAdd: %v\n", name, err)
+					l.Errorf("error on storage.TxAdd: %v\n", err)
 				}
 			} else {
-				log.Log.Errorf("%s error on poolCopyMap: tx not found: %s\n", name, txid)
+				l.Errorf("error on poolCopyMap: tx not found: %s\n", txid)
 			}
 		}
 	}
 }
 
 func (c *Core) workerPoolSorter(period time.Duration) {
-	name := "workerPoolSorter"
-	log.Log.Infof("[%s] started\n", name)
+	l := log.Log.WithField("context", "[workerPoolSorter]")
+	l.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Log.Infof("[%s] stopped\n", name)
+		l.Info("stopped")
 	}()
 	for {
 		select {
@@ -175,13 +180,12 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				// get parsed tx
 				parsedTx, err := c.storage.TxGet(tx.Txid)
 				if err != nil {
-					log.Log.Errorf("%s error on txget: %v\n", name, err)
+					l.Errorf("error on txget: %v\n", err)
 					continue
 				}
 				if parsedTx == nil {
 					continue
 				}
-				parsedTx.Fits = false
 				res = append(res, *parsedTx)
 
 				// totals
@@ -211,7 +215,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			})
 			var totalWeight uint32
 			for i := range res {
-				if totalWeight+res[i].Weight > BLOCK_SIZE {
+				if totalWeight+res[i].Weight > config.BLOCK_SIZE {
 					break
 				}
 				totalWeight += res[i].Weight
@@ -240,8 +244,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.feeBuckets = bucketsMap
 
 			c.mu.Unlock()
-			log.Log.Debugf("%s pool sorted, took: %v\n", name, time.Since(now))
-			log.Log.Debugf("%s total txs: %d\n", name, len(res))
+			l.Debugf("pool sorted, took: %v\n", time.Since(now))
+			l.Debugf("total txs: %d\n", len(res))
 		}
 	}
 }

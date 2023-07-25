@@ -8,15 +8,10 @@ import (
 	"go-btc-scan/src/pkg/core"
 	mblock "go-btc-scan/src/pkg/entity/models/block"
 	smap "go-btc-scan/src/pkg/storage/map"
-	"go-btc-scan/src/pkg/utils"
 	"log"
 )
 
 var cli *client.Client
-
-func init() {
-
-}
 
 func main() {
 	var err error
@@ -98,7 +93,7 @@ func main() {
 	// }
 
 	// create core with RPC client and storage
-	c := core.NewCore(ctx, cli, s)
+	c := core.NewCore(ctx, cfg, cli, s)
 	c.Start()
 	a := api.NewApi(c)
 	err = a.Listen()
@@ -106,98 +101,4 @@ func main() {
 		log.Fatalf("error on listen: %v", err)
 	}
 
-}
-
-func getTxAmounts(txid string) (uint64, uint64) {
-	if len(txid) != 64 {
-		log.Fatalln("getTxAmounts invalid txid:", txid)
-	}
-	// txidparam := string(t)
-	tx, err := cli.TransactionGet(txid)
-	if err != nil {
-		log.Fatalln("error on gettransaction:", err)
-	}
-	// ===== find out amount from vin tx matching by vout index
-	var in uint64
-	for _, vin := range tx.Vin {
-		// mined
-		if vin.Coinbase != "" {
-			continue
-		}
-		txIn, err := cli.TransactionGet(vin.Txid)
-		if err != nil {
-			log.Fatalln("error on gettransaction:", err)
-		}
-		for _, vout := range txIn.Vout {
-			if vout.N != vin.Vout {
-				continue
-			}
-			in += uint64(vout.Value * 1_0000_0000)
-		}
-	}
-	out := tx.GetTotalOut()
-	return in, out
-	// log.Println("in amount:", in)
-	// fee := in - out
-	// log.Printf("fee sat: %d\n", fee)
-	// fee per byte
-	// feePerByte := float64(fee) / float64(tx.Size)
-	// log.Printf("fee per byte: %.1f\n", feePerByte)
-
-}
-
-func debug() {
-	var err error
-
-	// get node info
-	into, err := cli.GetInfo()
-	if err != nil {
-		log.Fatalln("error on getinfo:", err)
-	}
-	log.Printf("node info: %+v\n", into)
-
-	// get block
-	blockHash := "00000000000000048e1b327dd79f72fab6395cc09a049e54fe2c0b90aa837914"
-	b, err := cli.GetBlock(blockHash)
-	if err != nil {
-		log.Fatalln("error on getblock:", err)
-	}
-	log.Printf("block %s tx cnt: %d\n", blockHash, len(b.Transactions))
-
-	// get raw tx
-	txHash := "6dcf241891cd43d3508ef6ee8f260fe5a9f3b0337f83874c4123bf6eb2c17454"
-	tx, err := cli.TransactionGet(txHash)
-	if err != nil {
-		log.Fatalln("error on gettransaction:", err)
-	}
-	// decode tx
-	// tx, err := cli.TransactionDecode(txData)
-	// if err != nil {
-	// 	log.Fatalln("error on decoderawtransaction:", err)
-	// }
-	utils.PrintStruct(tx)
-
-	// get peers
-	peers, err := cli.GetPeers()
-	if err != nil {
-		log.Fatalln("error on getpeerinfo:", err)
-	}
-	log.Println("Peers:")
-	for _, p := range peers {
-		log.Println(p.Addr)
-	}
-
-	// get raw mempool
-	txs, err := cli.RawMempool()
-	if err != nil {
-		log.Fatalln("error on rawmempool:", err)
-	}
-	log.Println("Raw mempool:", len(txs))
-
-	// get extended mempool
-	txs2, err := cli.RawMempoolVerbose()
-	if err != nil {
-		log.Fatalln("error on rawmempool:", err)
-	}
-	log.Println("Raw mempool extended:", len(txs2))
 }

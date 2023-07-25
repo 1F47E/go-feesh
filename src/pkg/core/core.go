@@ -14,14 +14,12 @@ import (
 	"sync"
 )
 
-const BLOCK_SIZE = 4_000_000
-
-var cfg = config.NewConfig()
-
 type Core struct {
-	ctx context.Context
-	mu  *sync.Mutex
-	cli *client.Client
+	ctx     context.Context
+	Cfg     *config.Config
+	cli     *client.Client
+	storage storage.PoolRepository
+	mu      *sync.Mutex
 
 	height      int
 	totalFee    uint64
@@ -33,17 +31,18 @@ type Core struct {
 	poolCopyMap map[string]txpool.TxPool
 	poolSorted  []mtx.Tx
 
-	storage storage.PoolRepository
 	// blocks      []*mblock.Block
 	parserJobCh chan string
 }
 
-func NewCore(ctx context.Context, cli *client.Client, s storage.PoolRepository) *Core {
+func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s storage.PoolRepository) *Core {
 	return &Core{
-		ctx:         ctx,
-		mu:          &sync.Mutex{},
-		cli:         cli,
-		storage:     s,
+		ctx:     ctx,
+		Cfg:     cfg,
+		cli:     cli,
+		storage: s,
+		mu:      &sync.Mutex{},
+
 		poolCopy:    make([]txpool.TxPool, 0),
 		poolCopyMap: make(map[string]txpool.TxPool),
 		poolSorted:  make([]mtx.Tx, 0),
@@ -67,8 +66,8 @@ func (c *Core) Start() {
 
 	// make a batch of parsers
 	// each parse makes a new RPC connection on every job
-	for i := 0; i < cfg.RpcLimit; i++ {
-		go c.workerTxParser()
+	for i := 0; i < c.Cfg.RpcLimit; i++ {
+		go c.workerTxParser(i + 1)
 	}
 
 	go c.workerPoolSorter(1 * time.Second)

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"runtime"
+
 	fiber "github.com/gofiber/fiber/v2"
 )
 
@@ -15,4 +17,17 @@ func (a *Api) NodeInfo(c *fiber.Ctx) error {
 		return c.Status(500).SendString(err.Error())
 	}
 	return c.JSON(info)
+}
+
+// return status about the system. G count and memory
+func (a *Api) Stats(c *fiber.Ctx) error {
+	mem := runtime.MemStats{}
+	runtime.ReadMemStats(&mem)
+	gCnt := runtime.NumGoroutine()
+	totalAlloc := mem.TotalAlloc / 1024 / 1024
+	ret := map[string]uint64{
+		"goroutines":   uint64(gCnt),
+		"mem_alloc_mb": totalAlloc,
+	}
+	return c.JSON(ret)
 }

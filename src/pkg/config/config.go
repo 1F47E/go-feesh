@@ -7,6 +7,8 @@ import (
 	log "go-btc-scan/src/pkg/logger"
 )
 
+const BLOCK_SIZE = 4_000_000
+
 type Config struct {
 	RpcUser  string
 	RpcPass  string
