@@ -113,14 +113,11 @@ func (c *Core) workerTxParser(n int) {
 				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
 				btx, err = c.cli.TransactionGet(txid)
 				if err != nil {
-					l.Errorf("error on getrawtransaction: %v\n", err)
-				}
-				if err != nil {
 					if err.Error() == client.ERR_5xx {
 						l.Errorf("error 5xx, retrying %d/%d\n", i+1, maxRetry)
 						continue
 					}
-					l.Errorf("error on parsePoolTx: %v\n", err)
+					l.Errorf("error on getrawtransaction %s: %v\n", txid, err)
 					continue
 				}
 				break

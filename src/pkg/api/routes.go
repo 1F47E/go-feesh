@@ -24,10 +24,10 @@ func (a *Api) Stats(c *fiber.Ctx) error {
 	mem := runtime.MemStats{}
 	runtime.ReadMemStats(&mem)
 	gCnt := runtime.NumGoroutine()
-	totalAlloc := mem.TotalAlloc / 1024 / 1024
+	alloc := mem.Alloc / 1024 / 1024
 	ret := map[string]uint64{
 		"goroutines":   uint64(gCnt),
-		"mem_alloc_mb": totalAlloc,
+		"mem_alloc_mb": alloc,
 	}
 	return c.JSON(ret)
 }
