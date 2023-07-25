@@ -182,13 +182,14 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 					continue
 				}
 				res = append(res, *parsedTx)
+
+				// totals
 				amount += parsedTx.Amount
 				fee += parsedTx.Fee
 				weight += uint64(parsedTx.Weight)
 
 				// count fee buckets
 				feeB := parsedTx.FeePerByte()
-				// get correct bucket
 				bucket := 0
 				for i, b := range buckets {
 					if feeB <= b {
@@ -202,7 +203,21 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				}
 				feeBuckets[bucket]++
 			}
-			// sort
+
+			// sort by fee - check if tx will fit in the next block
+			sort.Slice(res, func(i, j int) bool {
+				return res[i].Fee > res[j].Fee
+			})
+			totalWeight := uint64(0)
+			for _, tx := range res {
+				totalWeight += uint64(tx.Weight)
+				tx.Fits = true
+				if totalWeight > BLOCK_SIZE {
+					break
+				}
+			}
+
+			// sort by time
 			sort.Slice(res, func(i, j int) bool {
 				if !res[i].Time.Equal(res[j].Time) {
 					return res[i].Time.After(res[j].Time)
@@ -216,13 +231,6 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.totalWeight = weight
 
 			// TODO: fee estimator
-			// calc weight buckets
-			// sort by fee
-			// resF := make([]mtx.Tx, len(res))
-			// copy(resF, res)
-			// sort.Slice(resF, func(i, j int) bool {
-			// 	return resF[i].Fee > resF[j].Fee
-			// })
 
 			bucketsMap := make(map[uint]uint)
 			for i, b := range buckets {

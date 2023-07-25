@@ -16,6 +16,7 @@ type Tx struct {
 	FeeKb   uint64    `json:"fee_kb"`
 	FeeByte uint64    `json:"fee_b"`
 	Amount  uint64    `json:"amount"`
+	Fits    bool      `json:"fits"`
 }
 
 func (t *Tx) FeePerKb() uint {
