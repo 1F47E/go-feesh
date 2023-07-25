@@ -169,6 +169,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// collect parsed txs based on pool copy
 			// also count totals
 			var amount, fee, weight uint64
+			buckets := []uint{2, 5, 10, 20, 50, 100, 200, 499}
+			feeBuckets := make([]uint, len(buckets)+1)
 			for _, tx := range c.poolCopy {
 				// get parsed tx
 				parsedTx, err := c.storage.TxGet(tx.Txid)
@@ -183,6 +185,22 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				amount += parsedTx.Amount
 				fee += parsedTx.Fee
 				weight += uint64(parsedTx.Weight)
+
+				// count fee buckets
+				feeB := parsedTx.FeePerByte()
+				// get correct bucket
+				bucket := 0
+				for i, b := range buckets {
+					if feeB <= b {
+						bucket = i
+						break
+					}
+				}
+				// fee is too big
+				if feeB > buckets[len(buckets)-1] {
+					bucket = len(buckets)
+				}
+				feeBuckets[bucket]++
 			}
 			// sort
 			sort.Slice(res, func(i, j int) bool {
@@ -197,34 +215,15 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.totalFee = fee
 			c.totalWeight = weight
 
+			// TODO: fee estimator
 			// calc weight buckets
 			// sort by fee
-			resF := make([]mtx.Tx, len(res))
-			copy(resF, res)
-			sort.Slice(resF, func(i, j int) bool {
-				return resF[i].Fee > resF[j].Fee
-			})
+			// resF := make([]mtx.Tx, len(res))
+			// copy(resF, res)
+			// sort.Slice(resF, func(i, j int) bool {
+			// 	return resF[i].Fee > resF[j].Fee
+			// })
 
-			// calc how many txs will fit the block
-			buckets := []uint{2, 5, 10, 20, 50, 100, 200, 499}
-			feeBuckets := make([]uint, len(buckets)+1)
-			for _, tx := range resF {
-				feeB := tx.FeePerByte()
-				// get correct bucket
-				bucket := 0
-				for i, b := range buckets {
-					if feeB <= b {
-						bucket = i
-						break
-					}
-				}
-				// fee is too big
-				if feeB > buckets[len(buckets)-1] {
-					bucket = len(buckets)
-				}
-				feeBuckets[bucket]++
-
-			}
 			bucketsMap := make(map[uint]uint)
 			for i, b := range buckets {
 				bucketsMap[b] = feeBuckets[i]
