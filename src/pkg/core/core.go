@@ -25,11 +25,14 @@ type Core struct {
 	totalFee    uint64
 	totalAmount uint64
 	totalWeight uint64
-	feeBuckets  map[uint]uint
+
+	feeBuckets map[uint]uint
 
 	poolCopy    []txpool.TxPool
 	poolCopyMap map[string]txpool.TxPool
 	poolSorted  []mtx.Tx
+
+	blocks []string // keep track of parsed blocks
 
 	// blocks      []*mblock.Block
 	parserJobCh chan string
@@ -47,6 +50,8 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 		poolCopyMap: make(map[string]txpool.TxPool),
 		poolSorted:  make([]mtx.Tx, 0),
 		// blocks:      make([]*mblock.Block, 0),
+		blocks: make([]string, 0),
+		// block:       make(map[string]string),
 		parserJobCh: make(chan string),
 	}
 }
@@ -62,7 +67,8 @@ func (c *Core) Start() {
 		c.height = info.Blocks
 	}
 
-	go c.workerPoolPuller(1 * time.Second)
+	go c.workerParserBlocks(3 * time.Second)
+	go c.workerBlocksProcessor(1 * time.Second)
 
 	// make a batch of parsers
 	// each parse makes a new RPC connection on every job
@@ -70,7 +76,8 @@ func (c *Core) Start() {
 		go c.workerTxParser(i + 1)
 	}
 
-	go c.workerPoolSorter(1 * time.Second)
+	// go c.workerPoolPuller(1 * time.Second)
+	// go c.workerPoolSorter(1 * time.Second)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {

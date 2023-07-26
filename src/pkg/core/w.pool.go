@@ -30,13 +30,13 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			// get the block height
 			info, err := c.cli.GetInfo()
 			if err != nil {
-				log.Log.Errorf("error on getinfo: %v\n", err)
+				l.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
 
 			if c.height != info.Blocks {
 				c.height = info.Blocks
-				log.Log.Debugf("new block height: %d\n", info.Blocks)
+				l.Debugf("new block height: %d\n", info.Blocks)
 			}
 
 			// get ordered list of pool tsx. new first
@@ -127,6 +127,7 @@ func (c *Core) workerTxParser(n int) {
 			tx := mtx.Tx{
 				Hash:   txid,
 				Amount: btx.GetTotalOut(),
+				Weight: uint32(btx.Weight),
 			}
 			// combine with data from pool copy (fees, time, etc)
 			if poolTx, ok := c.poolCopyMap[txid]; ok {
@@ -135,14 +136,14 @@ func (c *Core) workerTxParser(n int) {
 				tx.Vsize = poolTx.Vsize
 				tx.Weight = poolTx.Weight
 				tx.Fee = poolTx.Fee
-				// save tx
-				err = c.storage.TxAdd(tx)
 				if err != nil {
 					l.Errorf("error on storage.TxAdd: %v\n", err)
 				}
 			} else {
-				l.Errorf("error on poolCopyMap: tx not found: %s\n", txid)
+				// l.Errorf("error on poolCopyMap: tx not found: %s\n", txid)
 			}
+			// save tx
+			_ = c.storage.TxAdd(tx)
 		}
 	}
 }
