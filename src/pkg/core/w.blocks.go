@@ -42,8 +42,8 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 			}
 
 			// collect N block hashes
-			// get block header
-			depth := 100
+			// around 3k txs in a block and around 1.5Meg for txs data
+			depth := 100 // 300k and 150meg
 			blocks := make([]string, 0)
 			currentHash := best.Hash
 			for i := 0; i < depth; i++ {
@@ -64,12 +64,11 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 
 			// parse N blocks
 			now := time.Now()
-			for _, hash := range blocks {
+			for i, hash := range blocks {
 				// get full block data (tx list)
 				exists, _ := c.storage.BlockExists(hash)
-				l.Debugf("block %s exists: %v\n", hash, exists)
 				if !exists {
-					l.Debugf("parsing block: %s\n", hash)
+					l.Debugf("%d/%d block parsing: %s\n", i, len(blocks), hash)
 					b, err := c.cli.GetBlock(hash)
 					if err != nil {
 						l.Errorf("error on getblock: %v\n", err)
