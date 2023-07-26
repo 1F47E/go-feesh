@@ -28,7 +28,8 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				l.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
-			if c.height == info.Blocks {
+			// skip if initial blocks already parsed and no new blocks
+			if c.height == info.Blocks && len(c.blocks) > 0 {
 				continue
 			}
 			c.height = info.Blocks
@@ -43,10 +44,9 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 
 			// collect N block hashes
 			// around 3k txs in a block and around 1.5Meg for txs data
-			depth := 100 // 300k and 150meg
 			blocks := make([]string, 0)
 			currentHash := best.Hash
-			for i := 0; i < depth; i++ {
+			for i := 0; i < c.blockDepth; i++ {
 				blocks = append(blocks, currentHash)
 				header, err := c.cli.GetBlockHeader(currentHash)
 				if err != nil {
@@ -68,7 +68,7 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				// get full block data (tx list)
 				exists, _ := c.storage.BlockExists(hash)
 				if !exists {
-					l.Debugf("%d/%d block parsing: %s\n", i, len(blocks), hash)
+					l.Debugf("%d/%d block parsing: %s\n", i+1, len(blocks), hash)
 					b, err := c.cli.GetBlock(hash)
 					if err != nil {
 						l.Errorf("error on getblock: %v\n", err)
@@ -113,17 +113,19 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 				for _, txid := range txs {
 					// check if tx is parsed
 					tx, _ := c.storage.TxGet(txid)
-					cnt++
 					if tx != nil {
+						cnt++
 						bWeight += uint64(tx.Weight)
 						bFee += tx.Fee
-						bAmount += tx.Amount
+						bAmount += tx.AmountOut
 					}
 				}
 				txCnt += cnt
 				// l.Debugf("block %s has %d/%d txs parsed. Weight: %d, Amount: %d", hash, cnt, len(txs), bWeight, bAmount)
 			}
-			l.Debugf("total parsed txs: %d\n", txCnt)
+			if txCnt > 0 {
+				l.Debugf("total parsed txs: %d\n", txCnt)
+			}
 		}
 	}
 }

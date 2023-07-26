@@ -32,7 +32,8 @@ type Core struct {
 	poolCopyMap map[string]txpool.TxPool
 	poolSorted  []mtx.Tx
 
-	blocks []string // keep track of parsed blocks
+	blockDepth int      // how deep to scan the blocks from the top
+	blocks     []string // keep track of parsed blocks
 
 	// blocks      []*mblock.Block
 	parserJobCh chan string
@@ -50,13 +51,15 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 		poolCopyMap: make(map[string]txpool.TxPool),
 		poolSorted:  make([]mtx.Tx, 0),
 		// blocks:      make([]*mblock.Block, 0),
-		blocks: make([]string, 0),
+		blockDepth: cfg.BlocksParsingDepth,
+		blocks:     make([]string, 0),
 		// block:       make(map[string]string),
 		parserJobCh: make(chan string),
 	}
 }
 
 func (c *Core) Start() {
+	// TODO: move best block to worker
 	// set the pool block height
 	info, err := c.cli.GetInfo()
 	if err != nil {
@@ -76,8 +79,8 @@ func (c *Core) Start() {
 		go c.workerTxParser(i + 1)
 	}
 
-	// go c.workerPoolPuller(1 * time.Second)
-	// go c.workerPoolSorter(1 * time.Second)
+	go c.workerPoolPuller(1 * time.Second)
+	go c.workerPoolSorter(1 * time.Second)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
@@ -121,4 +124,8 @@ func (c *Core) GetFeeBuckets() map[uint]uint {
 
 func (c *Core) GetTotalWeight() uint64 {
 	return c.totalWeight
+}
+
+func (c *Core) GetBlocks() []string {
+	return c.blocks
 }

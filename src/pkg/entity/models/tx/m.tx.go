@@ -7,16 +7,17 @@ import (
 )
 
 type Tx struct {
-	Hash    string    `json:"hash"`
-	Time    time.Time `json:"time"`
-	Size    uint32    `json:"size"`
-	Vsize   uint32    `json:"vsize"`
-	Weight  uint32    `json:"weight"`
-	Fee     uint64    `json:"fee"`
-	FeeKb   uint64    `json:"fee_kb"`
-	FeeByte uint64    `json:"fee_b"`
-	Amount  uint64    `json:"amount"`
-	Fits    bool      `json:"fits"`
+	Hash      string    `json:"hash"`
+	Time      time.Time `json:"time"`
+	Size      uint32    `json:"size"`
+	Vsize     uint32    `json:"vsize"`
+	Weight    uint32    `json:"weight"`
+	Fee       uint64    `json:"fee"`
+	FeeKb     uint64    `json:"fee_kb"`
+	FeeByte   uint64    `json:"fee_b"`
+	AmountOut uint64    `json:"amount_out"`
+	AmountIn  uint64    `json:"amount_in"`
+	Fits      bool      `json:"fits"`
 }
 
 func (t *Tx) FeePerKb() uint {

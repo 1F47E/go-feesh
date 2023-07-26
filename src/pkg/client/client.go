@@ -10,6 +10,7 @@ import (
 	"go-btc-scan/src/pkg/entity/btc/tx"
 	log "go-btc-scan/src/pkg/logger"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -63,6 +64,7 @@ type Client struct {
 	host     string
 	user     string
 	password string
+	retries  int
 }
 
 func NewClient(host, user, password string) (*Client, error) {
@@ -71,17 +73,17 @@ func NewClient(host, user, password string) (*Client, error) {
 	}
 	return &Client{
 		client: &http.Client{
-			Timeout: time.Second * 3, // getrawmempool verbose can take a long fucking time
+			Timeout: time.Second * 10, // getrawmempool verbose can take a long fucking time
 		},
 		host:     host,
 		user:     user,
 		password: password,
+		retries:  10,
 	}, nil
 }
 
-var ERR_5xx = "5xx"
-
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
+	l := log.Log.WithField("context", "[RPC]")
 	jr, err := json.Marshal(r)
 	if err != nil {
 		return nil, err
@@ -96,16 +98,22 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		log.Log.Errorf("RPC cli DO error: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-	// log http code
-	// retry on 5xx
-	if resp.StatusCode >= 500 {
-		return nil, fmt.Errorf(ERR_5xx)
+	resp := new(http.Response)
+	for i := 0; i <= c.retries; i++ {
+		resp, err = c.client.Do(req)
+		if err != nil {
+			// retry on 5xx
+			if resp != nil && resp.StatusCode >= 500 {
+				l.Errorf("5xx error: %s", resp.Status)
+				// sleep randomly to not overload the node. Parsing the pool can be 100k+ items.
+				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
+				continue
+			}
+			log.Log.Errorf("fatal error: %s", err.Error())
+			return nil, err
+		}
+		defer resp.Body.Close()
+		break
 	}
 
 	// debug
@@ -341,28 +349,28 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	return &resp, nil
 }
 
-func (c *Client) TransactionGetVin(t *tx.Transaction) (uint64, error) {
-	// ===== find out amount from vin tx matching by vout index
-	var in uint64
-	for _, vin := range t.Vin {
-		// mined
-		if vin.Coinbase != "" {
-			continue
-		}
-		txIn, err := c.TransactionGet(vin.Txid)
-		if err != nil {
-			log.Log.Errorf("error getting vin tx: %v\n", err)
-			return 0, err
-		}
-		for _, vout := range txIn.Vout {
-			if vout.N != vin.Vout {
-				continue
-			}
-			in += uint64(vout.Value * 1_0000_0000)
-		}
-	}
-	return in, nil
-}
+// func (c *Client) TransactionGetVin(t *tx.Transaction) (uint64, error) {
+// 	// ===== find out amount from vin tx matching by vout index
+// 	var in uint64
+// 	for _, vin := range t.Vin {
+// 		// mined
+// 		if vin.Coinbase != "" {
+// 			continue
+// 		}
+// 		txIn, err := c.TransactionGet(vin.Txid)
+// 		if err != nil {
+// 			log.Log.Errorf("error getting vin tx: %v\n", err)
+// 			return 0, err
+// 		}
+// 		for _, vout := range txIn.Vout {
+// 			if vout.N != vin.Vout {
+// 				continue
+// 			}
+// 			in += uint64(vout.Value * 1_0000_0000)
+// 		}
+// 	}
+// 	return in, nil
+// }
 
 // decode raw transaction
 func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {

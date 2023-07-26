@@ -14,6 +14,7 @@ type PoolResponse struct {
 	Fee        uint64        `json:"fee"`
 	FeeBuckets map[uint]uint `json:"fee_buckets"`
 	Txs        []mtx.Tx      `json:"txs"`
+	Blocks     []string      `json:"blocks"`
 }
 
 func (a *Api) Pool(c *fiber.Ctx) error {
@@ -30,6 +31,7 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		Fee:        a.core.GetTotalFee(),
 		FeeBuckets: a.core.GetFeeBuckets(),
 		Txs:        txs,
+		Blocks:     a.core.GetBlocks(),
 	}
 	return c.JSON(ret)
 }

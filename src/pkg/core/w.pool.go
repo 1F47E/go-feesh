@@ -1,14 +1,10 @@
 package core
 
 import (
-	"fmt"
-	"go-btc-scan/src/pkg/client"
 	"go-btc-scan/src/pkg/config"
-	"go-btc-scan/src/pkg/entity/btc/tx"
 	"go-btc-scan/src/pkg/entity/btc/txpool"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	log "go-btc-scan/src/pkg/logger"
-	"math/rand"
 	"sort"
 	"time"
 )
@@ -90,64 +86,6 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 	}
 }
 
-// log carefull, there can be a lot of workers
-func (c *Core) workerTxParser(n int) {
-	l := log.Log.WithField("context", fmt.Sprintf("[workerTxParser] #%d", n))
-	l.Trace("started\n")
-	defer func() {
-		l.Debug("stopped\n")
-	}()
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		case txid := <-c.parserJobCh:
-			var err error
-
-			// parse tx with retry
-			// log.Log.Debugf("%s parsing tx: %s\n", name, txid)
-			maxRetry := 10
-			btx := new(tx.Transaction)
-			for i := 0; i <= maxRetry; i++ {
-				// sleep randomly to not overload the node
-				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
-				btx, err = c.cli.TransactionGet(txid)
-				if err != nil {
-					if err.Error() == client.ERR_5xx {
-						l.Errorf("error 5xx, retrying %d/%d\n", i+1, maxRetry)
-						continue
-					}
-					l.Errorf("error on getrawtransaction %s: %v\n", txid, err)
-					continue
-				}
-				break
-			}
-			// log.Log.Debugf("%s parsed tx txid: %s\n", name, txid)
-			// remap raw tx to model
-			tx := mtx.Tx{
-				Hash:   txid,
-				Amount: btx.GetTotalOut(),
-				Weight: uint32(btx.Weight),
-			}
-			// combine with data from pool copy (fees, time, etc)
-			if poolTx, ok := c.poolCopyMap[txid]; ok {
-				tx.Time = time.Unix(poolTx.Time, 0)
-				tx.Size = poolTx.Size
-				tx.Vsize = poolTx.Vsize
-				tx.Weight = poolTx.Weight
-				tx.Fee = poolTx.Fee
-				if err != nil {
-					l.Errorf("error on storage.TxAdd: %v\n", err)
-				}
-			} else {
-				// l.Errorf("error on poolCopyMap: tx not found: %s\n", txid)
-			}
-			// save tx
-			_ = c.storage.TxAdd(tx)
-		}
-	}
-}
-
 func (c *Core) workerPoolSorter(period time.Duration) {
 	l := log.Log.WithField("context", "[workerPoolSorter]")
 	l.Info("started")
@@ -174,6 +112,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			var amount, fee, weight uint64
 			buckets := []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499}
 			feeBuckets := make([]uint, len(buckets)+1)
+
 			for _, tx := range c.poolCopy {
 				// get parsed tx
 				parsedTx, err := c.storage.TxGet(tx.Txid)
@@ -187,8 +126,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				res = append(res, *parsedTx)
 
 				// totals
-				amount += parsedTx.Amount
-				fee += parsedTx.Fee
+				amount += parsedTx.AmountOut
+				// fee += parsedTx.Fee
 				weight += uint64(parsedTx.Weight)
 
 				// count fee buckets
@@ -213,6 +152,9 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			})
 			var totalWeight uint32
 			for i := range res {
+				if res[i].Fee == 0 {
+					continue
+				}
 				if totalWeight+res[i].Weight > config.BLOCK_SIZE {
 					break
 				}
@@ -228,6 +170,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				// sometimes time can be equal, sort by Hash
 				return res[i].Hash < res[j].Hash
 			})
+			prevPoolCnt := len(c.poolSorted)
 			c.poolSorted = res
 			c.totalAmount = amount
 			c.totalFee = fee
@@ -242,8 +185,10 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.feeBuckets = bucketsMap
 
 			c.mu.Unlock()
-			l.Debugf("pool sorted, took: %v\n", time.Since(now))
-			l.Debugf("total txs: %d\n", len(res))
+			if prevPoolCnt != len(res) {
+				l.Debugf("pool sorted, took: %v\n", time.Since(now))
+				l.Debugf("total txs: %d\n", len(res))
+			}
 		}
 	}
 }

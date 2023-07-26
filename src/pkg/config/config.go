@@ -10,11 +10,12 @@ import (
 const BLOCK_SIZE = 4_000_000
 
 type Config struct {
-	RpcUser  string
-	RpcPass  string
-	RpcHost  string
-	ApiHost  string
-	RpcLimit int // btc node config should be updated to allow more connections
+	RpcUser            string
+	RpcPass            string
+	RpcHost            string
+	ApiHost            string
+	RpcLimit           int // btc node config should be updated to allow more connections
+	BlocksParsingDepth int
 }
 
 func NewConfig() *Config {
@@ -48,11 +49,21 @@ func NewConfig() *Config {
 		log.Log.Fatalln("API_HOST env var is required")
 	}
 
+	blocksDepthStr := os.Getenv("BLOCKS_PARSING_DEPTH")
+	if blocksDepthStr == "" {
+		log.Log.Fatalln("BLOCKS_PARSING_DEPTH env var is required")
+	}
+	blocksDepth, err := strconv.Atoi(blocksDepthStr)
+	if err != nil {
+		log.Log.Fatalln("error on parse BLOCKS_PARSING_DEPTH env var:", err)
+	}
+
 	return &Config{
-		RpcUser:  rpcUser,
-		RpcPass:  rpcPass,
-		RpcHost:  rpcHost,
-		RpcLimit: rpcLimit,
-		ApiHost:  apiHost,
+		RpcUser:            rpcUser,
+		RpcPass:            rpcPass,
+		RpcHost:            rpcHost,
+		RpcLimit:           rpcLimit,
+		ApiHost:            apiHost,
+		BlocksParsingDepth: blocksDepth,
 	}
 }
