@@ -123,11 +123,14 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				if parsedTx == nil {
 					continue
 				}
+				// fix time
+				parsedTx.Time = time.Unix(int64(tx.Time), 0)
+
 				res = append(res, *parsedTx)
 
 				// totals
 				amount += parsedTx.AmountOut
-				// fee += parsedTx.Fee
+				fee += parsedTx.Fee
 				weight += uint64(parsedTx.Weight)
 
 				// count fee buckets

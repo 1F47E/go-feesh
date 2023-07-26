@@ -4,6 +4,7 @@ import (
 	"fmt"
 	mtx "go-btc-scan/src/pkg/entity/models/tx"
 	log "go-btc-scan/src/pkg/logger"
+	"time"
 )
 
 // log carefull, there can be a lot of workers
@@ -52,9 +53,12 @@ func (c *Core) workerTxParser(n int) {
 					in += int64(vout.Value * 1_0000_0000)
 				}
 
-				// save in tx
+				// remap raw tx to model and save
+				// TODO: make constructor
 				mtxIn := mtx.Tx{
 					Hash:      vin.Txid,
+					Time:      time.Unix(int64(btx.Time), 0),
+					Size:      uint32(btx.Size),
 					Weight:    uint32(btx.Weight),
 					AmountOut: btx.GetTotalOut(),
 					AmountIn:  0,
@@ -65,22 +69,24 @@ func (c *Core) workerTxParser(n int) {
 				if in == 0 {
 					l.Errorf("no input amount, skipping tx: %s\n", txid)
 				}
+				// -1 is coinbase, no need to log error
 			}
 
 			// remap raw tx to model
 			out := btx.GetTotalOut()
 			fee := uint64(in) - out
-			feeKb := float64(fee) / float64(btx.Weight)
 			tx := mtx.Tx{
-				Hash:      txid,
+				Hash: txid,
+				// NOTE: mempool tx dont have time in rawtransaction
+				// only in custom ramempool tx we have pool time
+				Time:      time.Unix(int64(btx.Time), 0),
+				Size:      uint32(btx.Size),
 				Weight:    uint32(btx.Weight),
 				AmountOut: btx.GetTotalOut(),
 				AmountIn:  uint64(in),
 				Fee:       fee,
-				FeeKb:     uint64(feeKb),
 			}
 
-			// save tx
 			_ = c.storage.TxAdd(tx)
 		}
 	}
