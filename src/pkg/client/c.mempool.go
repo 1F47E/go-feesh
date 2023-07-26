@@ -9,11 +9,10 @@ import (
 
 // rawmempool request list of tx
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getrawmempool","params":[],"id":1}' http://localhost:18334
-// NOTE: node shuld be patched
-// In order to have ordered list of txs and more tx data without calling super long verbose mode
-// getrawmempool by default returns unsorted array of txs
-// The array should be ordered by time and hash, desc
-// custom response format
+// NOTE: In order to have close to realtime mempool info bitcoin node should be patched.
+// By default getrawmempool by default returns unsorted list of transactions.
+
+// custom response format with additional data
 /*
 {
     "txid": "0798ca60f8e42bc8ca4bf38b3449f05f6605136a30991e3962657b33fd2b035f",
