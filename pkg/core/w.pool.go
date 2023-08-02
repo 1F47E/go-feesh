@@ -1,12 +1,13 @@
 package core
 
 import (
-	"go-btc-scan/src/pkg/config"
-	"go-btc-scan/src/pkg/entity/btc/txpool"
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
-	log "go-btc-scan/src/pkg/logger"
 	"sort"
 	"time"
+
+	"github.com/1F47E/go-feesh/pkg/config"
+	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
+	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 func (c *Core) workerPoolPuller(period time.Duration) {

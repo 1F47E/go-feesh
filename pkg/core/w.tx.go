@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
-	log "go-btc-scan/src/pkg/logger"
 	"time"
+
+	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 // log carefull, there can be a lot of workers

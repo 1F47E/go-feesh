@@ -1,14 +1,27 @@
+/*
+	             _____ _____ _____ _____ _____
+				|   __|   __|   __|   __|  |  |
+				|   __|   __|   __|__   |     |
+				|__|  |_____|_____|_____|__|__|
+				bitcoin mempool stats
+
+
+
+	 NOTE: In order to have close to realtime mempool info bitcoin node should be patched.
+	 By default getrawmempool by default returns unsorted list of transactions.
+*/
 package main
 
 import (
 	"context"
-	"go-btc-scan/src/pkg/api"
-	"go-btc-scan/src/pkg/client"
-	"go-btc-scan/src/pkg/config"
-	"go-btc-scan/src/pkg/core"
-	mblock "go-btc-scan/src/pkg/entity/models/block"
-	smap "go-btc-scan/src/pkg/storage/map"
 	"log"
+
+	"github.com/1F47E/go-feesh/pkg/api"
+	"github.com/1F47E/go-feesh/pkg/client"
+	"github.com/1F47E/go-feesh/pkg/config"
+	"github.com/1F47E/go-feesh/pkg/core"
+	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
+	smap "github.com/1F47E/go-feesh/pkg/storage/map"
 )
 
 var cli *client.Client

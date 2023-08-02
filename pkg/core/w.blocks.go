@@ -1,8 +1,9 @@
 package core
 
 import (
-	log "go-btc-scan/src/pkg/logger"
 	"time"
+
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 func (c *Core) workerParserBlocks(period time.Duration) {

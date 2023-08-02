@@ -1,8 +1,9 @@
 package storage_map
 
 import (
-	"go-btc-scan/src/pkg/entity/models/tx"
 	"sync"
+
+	"github.com/1F47E/go-feesh/pkg/entity/models/tx"
 )
 
 type MapStorage struct {

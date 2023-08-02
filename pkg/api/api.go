@@ -1,8 +1,10 @@
 package api
 
 import (
-	"go-btc-scan/src/pkg/core"
-	log "go-btc-scan/src/pkg/logger"
+	"net/http"
+
+	"github.com/1F47E/go-feesh/pkg/core"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -53,4 +55,34 @@ func (a *Api) Listen() error {
 func (a *Api) Shutdown() error {
 	log.Log.Info("Shutting down server...")
 	return a.app.Shutdown()
+}
+
+type APISuccess struct {
+	Data interface{} `json:"data"`
+}
+
+type APIError struct {
+	Error       string `json:"error"`
+	Description string `json:"description,omitempty"`
+	RequestID   string `json:"request_id,omitempty"`
+}
+
+func apiSuccess(c *fiber.Ctx, data interface{}) error {
+	return c.JSON(APISuccess{Data: data})
+}
+
+func apiError(c *fiber.Ctx, httpCode int, messages ...string) error {
+	e := APIError{
+		Error: http.StatusText(httpCode),
+	}
+
+	if len(messages) > 0 {
+		e.Description = messages[0]
+	}
+
+	if len(messages) > 1 {
+		e.RequestID = messages[1]
+	}
+
+	return c.Status(httpCode).JSON(e)
 }

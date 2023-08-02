@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	log "go-btc-scan/src/pkg/logger"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 const BLOCK_SIZE = 4_000_000

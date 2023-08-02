@@ -1,6 +1,6 @@
-module go-btc-scan/src
+module github.com/1F47E/go-feesh
 
-go 1.19
+go 1.20
 
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.3

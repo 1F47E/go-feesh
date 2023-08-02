@@ -3,8 +3,9 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"go-btc-scan/src/pkg/entity/btc/txpool"
-	"log"
+
+	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 // rawmempool request list of tx
@@ -30,6 +31,8 @@ func (c *Client) RawMempool() ([]txpool.TxPool, error) {
 	}
 	// check type of result
 	if _, ok := data.Result.([]interface{}); !ok {
+		log.Log.Debugf("rawmempool result type: %T\n", data.Result)
+		log.Log.Debugf("rawmempool result: %+v\n", data.Result)
 		return nil, fmt.Errorf("unexpected type for result")
 	}
 	// Convert back to raw JSON
@@ -54,7 +57,7 @@ func (c *Client) RawMempoolVerbose() ([]txpool.TxPoolVerbose, error) {
 	r := NewRPCRequest("getrawmempool", []interface{}{true})
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Fatalln("error doing request:", err)
+		return nil, err
 	}
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
@@ -73,7 +76,7 @@ func (c *Client) RawMempoolVerbose() ([]txpool.TxPoolVerbose, error) {
 	}
 
 	res := make([]txpool.TxPoolVerbose, 0)
-	log.Printf("raw mempool transactions found %d\n", len(resp))
+	log.Log.Debugf("raw mempool transactions found %d\n", len(resp))
 	for k, v := range resp {
 		v.Hash = k
 		// log.Printf("txid: %s, fee: %f\n", k, v.Fee)

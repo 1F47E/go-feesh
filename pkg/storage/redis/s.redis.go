@@ -3,7 +3,8 @@ package storage_redis
 import (
 	"context"
 	"encoding/json"
-	"go-btc-scan/src/pkg/entity/models/tx"
+
+	"github.com/1F47E/go-feesh/pkg/entity/models/tx"
 
 	redis "github.com/redis/go-redis/v9"
 )

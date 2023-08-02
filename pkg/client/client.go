@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-btc-scan/src/pkg/entity/btc/block"
-	"go-btc-scan/src/pkg/entity/btc/info"
-	"go-btc-scan/src/pkg/entity/btc/peer"
-	"go-btc-scan/src/pkg/entity/btc/tx"
-	log "go-btc-scan/src/pkg/logger"
 	"io"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/1F47E/go-feesh/pkg/entity/btc/block"
+	"github.com/1F47E/go-feesh/pkg/entity/btc/info"
+	"github.com/1F47E/go-feesh/pkg/entity/btc/peer"
+	"github.com/1F47E/go-feesh/pkg/entity/btc/tx"
+	log "github.com/1F47E/go-feesh/pkg/logger"
 )
 
 // ===== Data

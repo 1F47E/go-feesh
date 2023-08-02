@@ -1,7 +1,7 @@
 package storage
 
 import (
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
+	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 )
 
 type PoolRepository interface {

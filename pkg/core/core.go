@@ -2,16 +2,18 @@ package core
 
 import (
 	"context"
-	"go-btc-scan/src/pkg/client"
-	"go-btc-scan/src/pkg/config"
-	log "go-btc-scan/src/pkg/logger"
-	"go-btc-scan/src/pkg/storage"
 	"time"
 
-	"go-btc-scan/src/pkg/entity/btc/info"
-	"go-btc-scan/src/pkg/entity/btc/txpool"
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
+	"github.com/1F47E/go-feesh/pkg/client"
+	"github.com/1F47E/go-feesh/pkg/config"
+	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/storage"
+
 	"sync"
+
+	"github.com/1F47E/go-feesh/pkg/entity/btc/info"
+	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
+	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 )
 
 type Core struct {

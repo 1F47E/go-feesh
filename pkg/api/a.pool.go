@@ -1,7 +1,9 @@
 package api
 
 import (
-	mtx "go-btc-scan/src/pkg/entity/models/tx"
+	"net/http"
+
+	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 
 	fiber "github.com/gofiber/fiber/v2"
 )
@@ -21,7 +23,7 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 100)
 	txs, err := a.core.GetPool(limit)
 	if err != nil {
-		return c.Status(500).SendString(err.Error())
+		return apiError(c, http.StatusInternalServerError, "Something went wrong", err.Error())
 	}
 	ret := PoolResponse{
 		Height:     a.core.GetHeight(),
@@ -33,5 +35,5 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		Txs:        txs,
 		Blocks:     a.core.GetBlocks(),
 	}
-	return c.JSON(ret)
+	return apiSuccess(c, ret)
 }
