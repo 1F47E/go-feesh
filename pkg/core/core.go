@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/1F47E/go-feesh/pkg/client"
@@ -61,6 +62,9 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 }
 
 func (c *Core) Start() {
+	if os.Getenv("DRY") == "1" {
+		return
+	}
 	// TODO: move best block to worker
 	// set the pool block height
 	info, err := c.cli.GetInfo()

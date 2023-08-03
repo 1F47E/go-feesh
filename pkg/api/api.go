@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/swagger"
 )
 
 type Api struct {
@@ -33,7 +34,9 @@ func NewApi(core *core.Core) *Api {
 
 	// setup routes
 	api := a.app.Group("/v0")
-	api.Get("/ping", a.Ping)
+
+	api.Get("/swagger/*", swagger.HandlerDefault) // default
+
 	api.Get("/monitor", monitor.New())
 	api.Get("/stats", a.Stats)
 	api.Get("/info", a.NodeInfo)

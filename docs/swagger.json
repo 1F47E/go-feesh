@@ -1,0 +1,177 @@
+{
+    "schemes": [
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API for feeding the feesh some data",
+        "title": "Feesh API",
+        "contact": {},
+        "version": "0.0.1"
+    },
+    "host": "localhost:8080",
+    "basePath": "/v1",
+    "paths": {
+        "/pool": {
+            "get": {
+                "description": "Get information about the current state of the pool",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pool"
+                ],
+                "summary": "Get pool information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of transactions returned",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.PoolResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "description": "Get information about the current state of the system memory",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "etc"
+                ],
+                "summary": "Some status about the system. G count and memory",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.StatsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.APIError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.APIError": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.PoolResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "fee": {
+                    "type": "integer"
+                },
+                "fee_buckets": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "txs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tx.Tx"
+                    }
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.StatsResponse": {
+            "type": "object",
+            "properties": {
+                "goroutines": {
+                    "type": "integer"
+                },
+                "mem_alloc_mb": {
+                    "type": "integer"
+                }
+            }
+        },
+        "tx.Tx": {
+            "type": "object",
+            "properties": {
+                "amount_in": {
+                    "type": "integer"
+                },
+                "amount_out": {
+                    "description": "FeeKb     uint64    `json:\"fee_kb\"`\nFeeByte   uint64    `json:\"fee_b\"`",
+                    "type": "integer"
+                },
+                "fee": {
+                    "type": "integer"
+                },
+                "fits": {
+                    "type": "boolean"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

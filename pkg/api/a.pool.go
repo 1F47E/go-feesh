@@ -19,6 +19,15 @@ type PoolResponse struct {
 	Blocks     []string      `json:"blocks"`
 }
 
+// @Summary Get pool information
+// @Description Get information about the current state of the pool
+// @Tags pool
+// @Accept  json
+// @Produce  json
+// @Param limit query int false "Limit the number of transactions returned"
+// @Success 200 {object} PoolResponse
+// @Failure 500 {object} APIError
+// @Router /pool [get]
 func (a *Api) Pool(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 100)
 	txs, err := a.core.GetPool(limit)

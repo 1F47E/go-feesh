@@ -1,0 +1,118 @@
+basePath: /v1
+definitions:
+  api.APIError:
+    properties:
+      description:
+        type: string
+      error:
+        type: string
+      request_id:
+        type: string
+    type: object
+  api.PoolResponse:
+    properties:
+      amount:
+        type: integer
+      blocks:
+        items:
+          type: string
+        type: array
+      fee:
+        type: integer
+      fee_buckets:
+        additionalProperties:
+          type: integer
+        type: object
+      height:
+        type: integer
+      size:
+        type: integer
+      txs:
+        items:
+          $ref: '#/definitions/tx.Tx'
+        type: array
+      weight:
+        type: integer
+    type: object
+  api.StatsResponse:
+    properties:
+      goroutines:
+        type: integer
+      mem_alloc_mb:
+        type: integer
+    type: object
+  tx.Tx:
+    properties:
+      amount_in:
+        type: integer
+      amount_out:
+        description: |-
+          FeeKb     uint64    `json:"fee_kb"`
+          FeeByte   uint64    `json:"fee_b"`
+        type: integer
+      fee:
+        type: integer
+      fits:
+        type: boolean
+      hash:
+        type: string
+      size:
+        type: integer
+      time:
+        type: string
+      weight:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for feeding the feesh some data
+  title: Feesh API
+  version: 0.0.1
+paths:
+  /pool:
+    get:
+      consumes:
+      - application/json
+      description: Get information about the current state of the pool
+      parameters:
+      - description: Limit the number of transactions returned
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.PoolResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.APIError'
+      summary: Get pool information
+      tags:
+      - pool
+  /stats:
+    get:
+      consumes:
+      - application/json
+      description: Get information about the current state of the system memory
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.StatsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.APIError'
+      summary: Some status about the system. G count and memory
+      tags:
+      - etc
+schemes:
+- https
+swagger: "2.0"

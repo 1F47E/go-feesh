@@ -19,15 +19,27 @@ func (a *Api) NodeInfo(c *fiber.Ctx) error {
 	return c.JSON(info)
 }
 
-// return status about the system. G count and memory
+type StatsResponse struct {
+	Goroutines int    `json:"goroutines"`
+	MemAllocMb uint64 `json:"mem_alloc_mb"`
+}
+
+// @Summary Some status about the system. G count and memory
+// @Description Get information about the current state of the system memory
+// @Tags etc
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} StatsResponse
+// @Failure 500 {object} APIError
+// @Router /stats [get]
 func (a *Api) Stats(c *fiber.Ctx) error {
 	mem := runtime.MemStats{}
 	runtime.ReadMemStats(&mem)
 	gCnt := runtime.NumGoroutine()
 	alloc := mem.Alloc / 1024 / 1024
-	ret := map[string]uint64{
-		"goroutines":   uint64(gCnt),
-		"mem_alloc_mb": alloc,
+	ret := StatsResponse{
+		Goroutines: gCnt,
+		MemAllocMb: alloc,
 	}
-	return c.JSON(ret)
+	return apiSuccess(c, ret)
 }
