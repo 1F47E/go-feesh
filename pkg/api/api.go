@@ -1,9 +1,7 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/1F47E/go-feesh/pkg/core"
 	"github.com/1F47E/go-feesh/pkg/logger"
@@ -18,9 +16,13 @@ import (
 )
 
 type Api struct {
-	app     *fiber.App
-	core    *core.Core
-	wsMsgCh chan []byte
+	app  *fiber.App
+	core *core.Core
+	// ws
+	clients    map[*websocket.Conn]*client
+	register   chan *websocket.Conn
+	broadcast  chan string
+	unregister chan *websocket.Conn
 }
 
 func NewApi(core *core.Core) *Api {
@@ -33,18 +35,18 @@ func NewApi(core *core.Core) *Api {
 	app.Use(flogger.New())
 	app.Use(recover.New())
 
-	// Set log format to JSON
-
 	// Middleware function
 	app.Use(func(c *fiber.Ctx) error {
 		customLogger := logger.LoggerEntry{Entry: *logger.Log.WithField("path", c.Path())}
 		c.Locals("logger", customLogger)
-		// c.Locals("logger", logger.Log.WithField("path", c.Path()))
 		return c.Next()
 	})
 
-	wsMsgCh := make(chan []byte)
-	a := Api{app, core, wsMsgCh}
+	clients := make(map[*websocket.Conn]*client)
+	register := make(chan *websocket.Conn)
+	broadcast := make(chan string)
+	unregister := make(chan *websocket.Conn)
+	a := Api{app, core, clients, register, broadcast, unregister}
 
 	// setup routes
 	api := a.app.Group("/v0")
@@ -55,43 +57,36 @@ func NewApi(core *core.Core) *Api {
 	api.Get("/pool", a.Pool)
 
 	// websockets
-	// Optional middleware
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		if c.Get("host") == "localhost:3000" {
-			c.Locals("Host", "Localhost:3000")
-			return c.Next()
-		}
-		return c.Status(403).SendString("Request origin not allowed")
-	})
-
-	// Upgraded websocket request
 	api.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		fmt.Println(c.Locals("Host"))
-		// on connection say hello
-		err := c.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
-		if err != nil {
-			log.Println("write:", err)
-		}
-		for msg := range wsMsgCh {
-			err := c.WriteMessage(websocket.TextMessage, msg)
+		defer func() {
+			unregister <- c
+			c.Close()
+		}()
+
+		// register new client
+		register <- c
+
+		for {
+			messageType, message, err := c.ReadMessage()
 			if err != nil {
-				log.Errorf("ws write error: %v", err)
-				break
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Println("read error:", err)
+				}
+
+				return // Calls the deferred function, i.e. closes the connection on error
+			}
+
+			if messageType == websocket.TextMessage {
+				log.Debugf("ws msg received: %s", message)
+				// TODO: receive pings
+			} else {
+				log.Error("websocket message received of type", messageType)
 			}
 		}
 	}))
 
-	// demo ws msg
-	go func() {
-		cnt := 0
-		for {
-			msg := fmt.Sprintf("Hello, Client! %d", cnt)
-			wsMsgCh <- []byte(msg)
-			log.Debugf("ws msg sent: %s", msg)
-			cnt++
-			time.Sleep(1 * time.Second)
-		}
-	}()
+	go a.workerWsHub()
+	go a.workerWsDemo()
 
 	return &a
 }
