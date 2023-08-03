@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	"github.com/1F47E/go-feesh/pkg/logger"
 
 	fiber "github.com/gofiber/fiber/v2"
 )
@@ -29,9 +30,12 @@ type PoolResponse struct {
 // @Failure 500 {object} APIError
 // @Router /pool [get]
 func (a *Api) Pool(c *fiber.Ctx) error {
+	log := c.Locals("logger").(logger.LoggerEntry)
+
 	limit := c.QueryInt("limit", 100)
 	txs, err := a.core.GetPool(limit)
 	if err != nil {
+		log.Errorf("error on getpool: %v\n", err)
 		return apiError(c, http.StatusInternalServerError, "Something went wrong", err.Error())
 	}
 	ret := PoolResponse{
@@ -44,5 +48,6 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		Txs:        txs,
 		Blocks:     a.core.GetBlocks(),
 	}
+	log.Infof("pool size: %d\n", ret.Size)
 	return apiSuccess(c, ret)
 }

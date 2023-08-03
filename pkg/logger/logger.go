@@ -8,10 +8,17 @@ import (
 
 var Log = logrus.New()
 
+type LoggerEntry struct {
+	logrus.Entry
+}
+
 func init() {
 	Log.Out = os.Stdout
 
 	Log.Level = logrus.DebugLevel
+
+	// for production
+	// log.SetFormatter(&log.JSONFormatter{})
 
 	// The TextFormatter is default, you don't actually have to do this.
 	Log.Formatter = &logrus.TextFormatter{

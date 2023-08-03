@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/1F47E/go-feesh/pkg/core"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/logger"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	flogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
@@ -25,18 +25,24 @@ func NewApi(core *core.Core) *Api {
 			BodyLimit: 1024 * 1024 * 100, // 100MB
 		})
 	app.Use(cors.New())
-	app.Use(logger.New())
-
-	// RECOVERY
+	app.Use(flogger.New())
 	app.Use(recover.New())
+
+	// Set log format to JSON
+
+	// Middleware function
+	app.Use(func(c *fiber.Ctx) error {
+		customLogger := logger.LoggerEntry{Entry: *logger.Log.WithField("path", c.Path())}
+		c.Locals("logger", customLogger)
+		// c.Locals("logger", logger.Log.WithField("path", c.Path()))
+		return c.Next()
+	})
 
 	a := Api{app, core}
 
 	// setup routes
 	api := a.app.Group("/v0")
-
 	api.Get("/swagger/*", swagger.HandlerDefault) // default
-
 	api.Get("/monitor", monitor.New())
 	api.Get("/stats", a.Stats)
 	api.Get("/info", a.NodeInfo)
@@ -46,17 +52,18 @@ func NewApi(core *core.Core) *Api {
 
 // will block
 func (a *Api) Listen() error {
-	log.Log.Info("Starting server...")
+	log := logger.Log.WithField("scope", "api.listen")
+	log.Info("Starting server...")
 	err := a.app.Listen(a.core.Cfg.ApiHost)
 	if err != nil {
-		log.Log.Fatal(err)
+		log.Fatal(err)
 	}
 	return nil
 }
 
 // shutdown
 func (a *Api) Shutdown() error {
-	log.Log.Info("Shutting down server...")
+	logger.Log.Info("Shutting down server...")
 	return a.app.Shutdown()
 }
 

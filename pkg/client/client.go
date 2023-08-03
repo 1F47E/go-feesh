@@ -317,7 +317,6 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	if len(txid) != 64 {
 		return nil, fmt.Errorf("TransactionGet invalid txid")
 	}
-	// fmt.Println("=== transactionGet")
 	p1 := []interface{}{string(txid)}
 	p2 := []interface{}{1}
 	params := append(p1, p2...)
@@ -325,8 +324,7 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	r := NewRPCRequest("getrawtransaction", params)
 	data, err := c.doRequest(r)
 	if err != nil {
-		log.Log.Errorf("error doing request: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("error on getrawtransaction: %v", err)
 	}
 	// check type of result is string
 	if _, ok := data.Result.(map[string]interface{}); !ok {
@@ -336,8 +334,7 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Log.Errorf("Error marshalling back to raw JSON: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("error marshalling back to raw JSON: %v", err)
 	}
 
 	// parse into struct
@@ -345,7 +342,7 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
 		log.Log.Errorf("error unmarshalling response: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 	return &resp, nil
 }
@@ -375,7 +372,6 @@ func (c *Client) TransactionGet(txid string) (*tx.Transaction, error) {
 
 // decode raw transaction
 func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {
-	fmt.Println("=== transactionDecode")
 	r := NewRPCRequest("decoderawtransaction", []interface{}{txdata})
 	data, err := c.doRequest(r)
 	if err != nil {
@@ -406,7 +402,6 @@ func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {
 // get peer info
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getpeerinfo","params":[],"id":1}' http://localhost:18334
 func (c *Client) GetPeers() ([]*peer.Peer, error) {
-	fmt.Println("=== getPeers")
 	r := NewRPCRequest("getpeerinfo", []interface{}{})
 	data, err := c.doRequest(r)
 	if err != nil {
