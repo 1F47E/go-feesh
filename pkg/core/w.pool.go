@@ -7,15 +7,16 @@ import (
 	"github.com/1F47E/go-feesh/pkg/config"
 	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/notificator"
 )
 
 func (c *Core) workerPoolPuller(period time.Duration) {
-	l := log.Log.WithField("context", "[workerPoolPuller]")
-	l.Infof("started\n")
+	log := logger.Log.WithField("context", "[workerPoolPuller]")
+	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		l.Infof(" stopped\n")
+		log.Infof(" stopped\n")
 		ticker.Stop()
 	}()
 
@@ -27,19 +28,19 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			// get the block height
 			info, err := c.cli.GetInfo()
 			if err != nil {
-				l.Errorf("error on getinfo: %v\n", err)
+				log.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
 
 			if c.height != info.Blocks {
 				c.height = info.Blocks
-				l.Debugf("new block height: %d\n", info.Blocks)
+				log.Debugf("new block height: %d\n", info.Blocks)
 			}
 
 			// get ordered list of pool tsx. new first
 			poolTxs, err := c.cli.RawMempool()
 			if err != nil {
-				l.Errorf("error on rawmempool: %v\n", err)
+				log.Errorf("error on rawmempool: %v\n", err)
 				continue
 			}
 			if len(poolTxs) == 0 {
@@ -57,7 +58,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			if !hasNew {
 				continue
 			}
-			l.Debugf("got some new txs\n")
+			log.Debugf("got some new txs\n")
 
 			// copy pool txs mem for later reference what pool have
 			c.mu.Lock()
@@ -74,7 +75,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 				// skip if already parsed
 				exists, err := c.storage.TxGet(tx.Txid)
 				if err != nil {
-					l.Errorf("error on txget: %v\n", err)
+					log.Errorf("error on txget: %v\n", err)
 					continue
 				}
 				if exists != nil {
@@ -88,11 +89,11 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 }
 
 func (c *Core) workerPoolSorter(period time.Duration) {
-	l := log.Log.WithField("context", "[workerPoolSorter]")
-	l.Info("started")
+	log := logger.Log.WithField("context", "[workerPoolSorter]")
+	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		l.Info("stopped")
+		log.Info("stopped")
 	}()
 	for {
 		select {
@@ -118,7 +119,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				// get parsed tx
 				parsedTx, err := c.storage.TxGet(tx.Txid)
 				if err != nil {
-					l.Errorf("error on txget: %v\n", err)
+					log.Errorf("error on txget: %v\n", err)
 					continue
 				}
 				if parsedTx == nil {
@@ -190,9 +191,35 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			c.mu.Unlock()
 			if prevPoolCnt != len(res) {
-				l.Debugf("pool sorted, took: %v\n", time.Since(now))
-				l.Debugf("total txs: %d\n", len(res))
+				log.Debugf("pool sorted, took: %v\n", time.Since(now))
+				log.Debugf("total txs: %d\n", len(res))
 			}
+
+			feeAvg := 0
+			if len(res) > 0 {
+				feeAvg = int(fee / uint64(len(res)))
+			}
+			// send websocket update
+			msg := notificator.Msg{
+				Height:   c.height,
+				PoolSize: len(res),
+				TotalFee: int(fee),
+				AvgFee:   feeAvg,
+				Amount:   int(amount),
+				Weight:   int(weight),
+			}
+			go c.nofity(msg)
 		}
+	}
+}
+
+// send websocket update
+// with timeout, protection from blocking
+func (c *Core) nofity(msg notificator.Msg) {
+	select {
+	case c.broadcastCh <- msg:
+		// Message sent successfully
+	case <-time.After(time.Second * 5):
+		logger.Log.Error("timeout on sending websocket message\n")
 	}
 }

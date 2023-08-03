@@ -7,7 +7,8 @@ import (
 
 	"github.com/1F47E/go-feesh/pkg/client"
 	"github.com/1F47E/go-feesh/pkg/config"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/notificator"
 	"github.com/1F47E/go-feesh/pkg/storage"
 
 	"sync"
@@ -19,10 +20,12 @@ import (
 
 type Core struct {
 	ctx     context.Context
+	mu      *sync.Mutex
 	Cfg     *config.Config
 	cli     *client.Client
 	storage storage.PoolRepository
-	mu      *sync.Mutex
+	// ws
+	broadcastCh chan notificator.Msg
 
 	height      int
 	totalFee    uint64
@@ -42,13 +45,14 @@ type Core struct {
 	parserJobCh chan string
 }
 
-func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s storage.PoolRepository) *Core {
+func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s storage.PoolRepository, broadcastCh chan notificator.Msg) *Core {
 	return &Core{
-		ctx:     ctx,
-		Cfg:     cfg,
-		cli:     cli,
-		storage: s,
-		mu:      &sync.Mutex{},
+		ctx:         ctx,
+		mu:          &sync.Mutex{},
+		Cfg:         cfg,
+		cli:         cli,
+		storage:     s,
+		broadcastCh: broadcastCh,
 
 		poolCopy:    make([]txpool.TxPool, 0),
 		poolCopyMap: make(map[string]txpool.TxPool),
@@ -62,6 +66,7 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 }
 
 func (c *Core) Start() {
+	log := logger.Log.WithField("context", "[core]")
 	if os.Getenv("DRY") == "1" {
 		return
 	}
@@ -69,7 +74,7 @@ func (c *Core) Start() {
 	// set the pool block height
 	info, err := c.cli.GetInfo()
 	if err != nil {
-		log.Log.Errorf("error on getinfo: %v\n", err)
+		log.Errorf("error on getinfo: %v\n", err)
 	} else {
 		// even if its fails - having block 0 will update pool txs list every time
 		// its just for performance reasons

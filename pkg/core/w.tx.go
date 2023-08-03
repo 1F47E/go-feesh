@@ -5,15 +5,15 @@ import (
 	"time"
 
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/logger"
 )
 
 // log carefull, there can be a lot of workers
 func (c *Core) workerTxParser(n int) {
-	l := log.Log.WithField("context", fmt.Sprintf("[workerTxParser] #%d", n))
-	l.Trace("started\n")
+	log := logger.Log.WithField("context", fmt.Sprintf("[workerTxParser] #%d", n))
+	log.Trace("started")
 	defer func() {
-		l.Debug("stopped\n")
+		log.Debug("stopped")
 	}()
 	for {
 		select {
@@ -26,7 +26,7 @@ func (c *Core) workerTxParser(n int) {
 			// log.Log.Debugf("%s parsing tx: %s\n", name, txid)
 			btx, err := c.cli.TransactionGet(txid)
 			if err != nil {
-				l.Errorf("error on getrawtransaction %s: %v\n", txid, err)
+				log.Errorf("error on getrawtransaction %s: %v\n", txid, err)
 				continue
 			}
 			// log.Log.Debugf("%s parsed tx txid: %s\n", name, txid)
@@ -44,7 +44,7 @@ func (c *Core) workerTxParser(n int) {
 				}
 				txIn, err := c.cli.TransactionGet(vin.Txid)
 				if err != nil {
-					log.Log.Errorf("error getting vin tx: %v\n", err)
+					log.Errorf("error getting vin tx: %v\n", err)
 					break
 				}
 				for _, vout := range txIn.Vout {
@@ -68,7 +68,7 @@ func (c *Core) workerTxParser(n int) {
 			}
 			if in <= 0 {
 				if in == 0 {
-					l.Errorf("no input amount, skipping tx: %s\n", txid)
+					log.Errorf("no input amount, skipping tx: %s\n", txid)
 				}
 				// -1 is coinbase, no need to log error
 			}

@@ -3,15 +3,15 @@ package core
 import (
 	"time"
 
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/logger"
 )
 
 func (c *Core) workerParserBlocks(period time.Duration) {
-	l := log.Log.WithField("context", "[workerParserBlocks]")
-	l.Infof("started\n")
+	log := logger.Log.WithField("context", "[workerParserBlocks]")
+	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		l.Infof(" stopped\n")
+		log.Infof(" stopped\n")
 		ticker.Stop()
 	}()
 
@@ -26,7 +26,7 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 			// get the block height
 			info, err := c.cli.GetInfo()
 			if err != nil {
-				l.Errorf("error on getinfo: %v\n", err)
+				log.Errorf("error on getinfo: %v\n", err)
 				continue
 			}
 			// skip if initial blocks already parsed and no new blocks
@@ -34,12 +34,12 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				continue
 			}
 			c.height = info.Blocks
-			l.Debugf("new block height: %d\n", info.Blocks)
+			log.Debugf("new block height: %d\n", info.Blocks)
 
 			// get best block
 			best, err := c.cli.GetBestBlock()
 			if err != nil {
-				l.Errorf("error on getbestblock: %v\n", err)
+				log.Errorf("error on getbestblock: %v\n", err)
 				continue
 			}
 
@@ -51,16 +51,16 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				blocks = append(blocks, currentHash)
 				header, err := c.cli.GetBlockHeader(currentHash)
 				if err != nil {
-					l.Errorf("error on getblockheader: %v\n", err)
+					log.Errorf("error on getblockheader: %v\n", err)
 					continue
 				}
 				// l.Debugf("best block hash: %s\n", best.Hash)
 				// l.Debugf("prev block hash: %s\n", header.Previousblockhash)
 				currentHash = header.Previousblockhash
 			}
-			l.Debugf("got %d last blocks\n", len(blocks))
+			log.Debugf("got %d last blocks\n", len(blocks))
 			for _, hash := range blocks {
-				l.Debugf("block hash: %s\n", hash)
+				log.Debugf("block hash: %s\n", hash)
 			}
 
 			// parse N blocks
@@ -69,10 +69,10 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				// get full block data (tx list)
 				exists, _ := c.storage.BlockExists(hash)
 				if !exists {
-					l.Debugf("%d/%d block parsing: %s\n", i+1, len(blocks), hash)
+					log.Debugf("%d/%d block parsing: %s\n", i+1, len(blocks), hash)
 					b, err := c.cli.GetBlock(hash)
 					if err != nil {
-						l.Errorf("error on getblock: %v\n", err)
+						log.Errorf("error on getblock: %v\n", err)
 					}
 					_ = c.storage.BlockAdd(b.Hash, b.Transactions)
 					// add to in mem blocks index
@@ -86,17 +86,17 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 					}
 				}
 			}
-			l.Debugf("blocks %d processed in %s\n", len(blocks), time.Since(now))
+			log.Debugf("blocks %d processed in %s\n", len(blocks), time.Since(now))
 		}
 	}
 }
 
 func (c *Core) workerBlocksProcessor(period time.Duration) {
-	l := log.Log.WithField("context", "[workerBlocksProcessor]")
-	l.Info("started")
+	log := logger.Log.WithField("context", "[workerBlocksProcessor]")
+	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		l.Info("stopped")
+		log.Info("stopped")
 	}()
 	for {
 		select {
@@ -125,7 +125,7 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 				// l.Debugf("block %s has %d/%d txs parsed. Weight: %d, Amount: %d", hash, cnt, len(txs), bWeight, bAmount)
 			}
 			if txCnt > 0 {
-				l.Debugf("total parsed txs: %d\n", txCnt)
+				log.Debugf("total parsed txs: %d\n", txCnt)
 			}
 		}
 	}

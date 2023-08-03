@@ -17,13 +17,12 @@ import (
 )
 
 type Api struct {
-	app  *fiber.App
-	core *core.Core
-	// ws
+	app         *fiber.App
+	core        *core.Core
 	notificator *notificator.Notificator
 }
 
-func NewApi(core *core.Core) *Api {
+func NewApi(core *core.Core, notificator *notificator.Notificator) *Api {
 	log := logger.Log.WithField("scope", "api.new")
 	app := fiber.New(
 		fiber.Config{
@@ -40,8 +39,6 @@ func NewApi(core *core.Core) *Api {
 		return c.Next()
 	})
 
-	// TODO: pass ctx
-	notificator := notificator.New()
 	a := Api{app, core, notificator}
 
 	// setup routes
@@ -55,12 +52,12 @@ func NewApi(core *core.Core) *Api {
 	// websockets
 	api.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		defer func() {
-			a.notificator.Unregister <- c
+			a.notificator.UnregisterCh <- c
 			c.Close()
 		}()
 
 		// register new client
-		a.notificator.Register <- c
+		a.notificator.RegisterCh <- c
 
 		for {
 			messageType, message, err := c.ReadMessage()
@@ -88,12 +85,10 @@ func NewApi(core *core.Core) *Api {
 func (a *Api) Listen() error {
 	log := logger.Log.WithField("scope", "api.listen")
 
-	// start ws hub
-	log.Info("Starting ws hub...")
+	log.Info("Starting WS service...")
 	a.notificator.Start()
-	log.Info("Starting http server...")
 
-	// start http
+	log.Info("Starting http server...")
 	err := a.app.Listen(a.core.Cfg.ApiHost)
 	if err != nil {
 		log.Fatal(err)
