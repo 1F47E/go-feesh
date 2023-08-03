@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/1F47E/go-feesh/pkg/core"
 	"github.com/1F47E/go-feesh/pkg/logger"
@@ -12,14 +14,17 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	"github.com/gofiber/websocket/v2"
 )
 
 type Api struct {
-	app  *fiber.App
-	core *core.Core
+	app     *fiber.App
+	core    *core.Core
+	wsMsgCh chan []byte
 }
 
 func NewApi(core *core.Core) *Api {
+	log := logger.Log.WithField("scope", "api.new")
 	app := fiber.New(
 		fiber.Config{
 			BodyLimit: 1024 * 1024 * 100, // 100MB
@@ -38,7 +43,8 @@ func NewApi(core *core.Core) *Api {
 		return c.Next()
 	})
 
-	a := Api{app, core}
+	wsMsgCh := make(chan []byte)
+	a := Api{app, core, wsMsgCh}
 
 	// setup routes
 	api := a.app.Group("/v0")
@@ -47,6 +53,46 @@ func NewApi(core *core.Core) *Api {
 	api.Get("/stats", a.Stats)
 	api.Get("/info", a.NodeInfo)
 	api.Get("/pool", a.Pool)
+
+	// websockets
+	// Optional middleware
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if c.Get("host") == "localhost:3000" {
+			c.Locals("Host", "Localhost:3000")
+			return c.Next()
+		}
+		return c.Status(403).SendString("Request origin not allowed")
+	})
+
+	// Upgraded websocket request
+	api.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		fmt.Println(c.Locals("Host"))
+		// on connection say hello
+		err := c.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
+		if err != nil {
+			log.Println("write:", err)
+		}
+		for msg := range wsMsgCh {
+			err := c.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Errorf("ws write error: %v", err)
+				break
+			}
+		}
+	}))
+
+	// demo ws msg
+	go func() {
+		cnt := 0
+		for {
+			msg := fmt.Sprintf("Hello, Client! %d", cnt)
+			wsMsgCh <- []byte(msg)
+			log.Debugf("ws msg sent: %s", msg)
+			cnt++
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
 	return &a
 }
 
