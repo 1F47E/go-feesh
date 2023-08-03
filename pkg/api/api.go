@@ -5,6 +5,7 @@ import (
 
 	"github.com/1F47E/go-feesh/pkg/core"
 	"github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/pkg/notificator"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -19,10 +20,7 @@ type Api struct {
 	app  *fiber.App
 	core *core.Core
 	// ws
-	clients    map[*websocket.Conn]*client
-	register   chan *websocket.Conn
-	broadcast  chan string
-	unregister chan *websocket.Conn
+	notificator *notificator.Notificator
 }
 
 func NewApi(core *core.Core) *Api {
@@ -42,11 +40,9 @@ func NewApi(core *core.Core) *Api {
 		return c.Next()
 	})
 
-	clients := make(map[*websocket.Conn]*client)
-	register := make(chan *websocket.Conn)
-	broadcast := make(chan string)
-	unregister := make(chan *websocket.Conn)
-	a := Api{app, core, clients, register, broadcast, unregister}
+	// TODO: pass ctx
+	notificator := notificator.New()
+	a := Api{app, core, notificator}
 
 	// setup routes
 	api := a.app.Group("/v0")
@@ -59,12 +55,12 @@ func NewApi(core *core.Core) *Api {
 	// websockets
 	api.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		defer func() {
-			unregister <- c
+			a.notificator.Unregister <- c
 			c.Close()
 		}()
 
 		// register new client
-		register <- c
+		a.notificator.Register <- c
 
 		for {
 			messageType, message, err := c.ReadMessage()
@@ -85,16 +81,19 @@ func NewApi(core *core.Core) *Api {
 		}
 	}))
 
-	go a.workerWsHub()
-	go a.workerWsDemo()
-
 	return &a
 }
 
 // will block
 func (a *Api) Listen() error {
 	log := logger.Log.WithField("scope", "api.listen")
-	log.Info("Starting server...")
+
+	// start ws hub
+	log.Info("Starting ws hub...")
+	a.notificator.Start()
+	log.Info("Starting http server...")
+
+	// start http
 	err := a.app.Listen(a.core.Cfg.ApiHost)
 	if err != nil {
 		log.Fatal(err)
