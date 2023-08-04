@@ -7,6 +7,9 @@ type Block struct {
 	Height int    `json:"height"`
 	Value  uint64 `json:"value"`
 	Fee    uint64 `json:"fee"`
+	Weight uint64 `json:"weight"`
+	Size   uint64 `json:"size"`
+	Txs    uint64 `json:"txs"`
 }
 
 func (b *Block) ValueString() string {

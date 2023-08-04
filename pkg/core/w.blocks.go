@@ -3,6 +3,7 @@ package core
 import (
 	"time"
 
+	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
 	"github.com/1F47E/go-feesh/pkg/logger"
 )
 
@@ -15,7 +16,7 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 		ticker.Stop()
 	}()
 
-	// WARN: debug
+	// WARN: debug reset
 	c.height = 0
 
 	for {
@@ -74,10 +75,11 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 					if err != nil {
 						log.Errorf("error on getblock: %v\n", err)
 					}
+					// TODO: store raw block info also
 					_ = c.storage.BlockAdd(b.Hash, b.Transactions)
 					// add to in mem blocks index
 					c.mu.Lock()
-					c.blocks = append(c.blocks, b.Hash)
+					c.blocksIndex = append(c.blocksIndex, b.Hash)
 					c.mu.Unlock()
 					// send block txs parser
 					txs, _ := c.storage.BlockGet(b.Hash)
@@ -105,8 +107,8 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 		case <-ticker.C:
 			// check blocks and what tx are parsed
 			txCnt := 0
-			for _, hash := range c.blocks {
-				var bWeight, bFee, bAmount uint64
+			for _, hash := range c.blocksIndex {
+				var bWeight, bSize, bFee, bAmount uint64
 				// log.Log.Debugf("checking block %s\n", hash)
 				txs, _ := c.storage.BlockGet(hash)
 				// log.Log.Debugf("block has %s txs: %d\n", hash, len(txs))
@@ -115,13 +117,31 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 					// check if tx is parsed
 					tx, _ := c.storage.TxGet(txid)
 					if tx != nil {
+						// skip first one. TODO: detect coinbase by param
 						cnt++
+						if cnt == 1 {
+							continue
+						}
 						bWeight += uint64(tx.Weight)
+						bSize += uint64(tx.Size)
 						bFee += tx.Fee
 						bAmount += tx.AmountOut
+						log.Debugf("block %s tx %s fee %d amount %d\n", hash, txid, tx.Fee, tx.AmountOut)
 					}
 				}
+				log.Debugf("block %s has tx %s parsed. total fee: %d amount: %d\n", hash, cnt, bFee, bAmount)
 				txCnt += cnt
+				// save block stats
+				b := mblock.Block{
+					Hash:   hash,
+					Txs:    uint64(len(txs)),
+					Weight: bWeight,
+					Size:   bSize,
+					Fee:    bFee,
+					Value:  bAmount,
+				}
+				c.blocks = append(c.blocks, b)
+				// TODO: add to storage
 				// l.Debugf("block %s has %d/%d txs parsed. Weight: %d, Amount: %d", hash, cnt, len(txs), bWeight, bAmount)
 			}
 			if txCnt > 0 {

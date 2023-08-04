@@ -15,6 +15,7 @@ import (
 
 	"github.com/1F47E/go-feesh/pkg/entity/btc/info"
 	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
+	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 )
 
@@ -38,8 +39,9 @@ type Core struct {
 	poolCopyMap map[string]txpool.TxPool
 	poolSorted  []mtx.Tx
 
-	blockDepth int      // how deep to scan the blocks from the top
-	blocks     []string // keep track of parsed blocks
+	blockDepth  int      // how deep to scan the blocks from the top
+	blocksIndex []string // keep track of parsed blocks
+	blocks      []mblock.Block
 
 	// blocks      []*mblock.Block
 	parserJobCh chan string
@@ -58,8 +60,8 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 		poolCopyMap: make(map[string]txpool.TxPool),
 		poolSorted:  make([]mtx.Tx, 0),
 		// blocks:      make([]*mblock.Block, 0),
-		blockDepth: cfg.BlocksParsingDepth,
-		blocks:     make([]string, 0),
+		blockDepth:  cfg.BlocksParsingDepth,
+		blocksIndex: make([]string, 0),
 		// block:       make(map[string]string),
 		parserJobCh: make(chan string),
 	}
@@ -137,6 +139,6 @@ func (c *Core) GetTotalWeight() uint64 {
 	return c.totalWeight
 }
 
-func (c *Core) GetBlocks() []string {
+func (c *Core) GetBlocks() []mblock.Block {
 	return c.blocks
 }
