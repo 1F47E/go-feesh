@@ -14,12 +14,14 @@ NOTE: In order to have close to realtime mempool info bitcoin node should be pat
 By default getrawmempool by default returns unsorted list of transactions.
 
 
-ENVS:
+# ENVS:
+```                                           
 export RPC_USER='rpcuser'
 export RPC_PASS='rpcpass'
 export RPC_HOST='http://localhost:18334'
 export RPC_LIMIT=420
 export API_HOST='localhost:8080'
+```                                           
 
 
 
