@@ -187,7 +187,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			for i, b := range buckets {
 				bucketsMap[b] = feeBuckets[i]
 			}
-			c.feeBuckets = bucketsMap
+			c.feeBucketsMap = bucketsMap
+			c.feeBuckets = feeBuckets
 
 			c.mu.Unlock()
 			if prevPoolCnt != len(res) {
@@ -199,14 +200,20 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			if len(res) > 0 {
 				feeAvg = int(fee / uint64(len(res)))
 			}
+			// fee butkets
+			// TODO: move size to const
+			var feeBucketsArr [23]uint
+			copy(feeBucketsArr[:], feeBuckets)
+
 			// send websocket update
 			msg := notificator.Msg{
-				Height:   c.height,
-				PoolSize: len(res),
-				TotalFee: int(fee),
-				AvgFee:   feeAvg,
-				Amount:   int(amount),
-				Weight:   int(weight),
+				Height:     c.height,
+				PoolSize:   len(res),
+				TotalFee:   int(fee),
+				AvgFee:     feeAvg,
+				Amount:     int(amount),
+				Weight:     int(weight),
+				FeeBuckets: feeBucketsArr,
 			}
 			go c.nofity(msg)
 		}

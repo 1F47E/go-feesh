@@ -10,13 +10,17 @@ import (
 
 var log = logger.Log.WithField("scope", "notificator")
 
+// buckets := []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499}
+// 23 elements
+
 type Msg struct {
-	Height   int `json:"height"`
-	PoolSize int `json:"size"`
-	TotalFee int `json:"fee"`
-	AvgFee   int `json:"avg_fee"`
-	Amount   int `json:"amount"`
-	Weight   int `json:"weight"`
+	Height     int      `json:"height"`
+	PoolSize   int      `json:"size"`
+	TotalFee   int      `json:"fee"`
+	AvgFee     int      `json:"avg_fee"`
+	Amount     int      `json:"amount"`
+	Weight     int      `json:"weight"`
+	FeeBuckets [23]uint `json:"fee_buckets"`
 }
 
 type client struct {
