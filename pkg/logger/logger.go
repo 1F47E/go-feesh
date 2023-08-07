@@ -15,7 +15,11 @@ type LoggerEntry struct {
 func init() {
 	Log.Out = os.Stdout
 
-	Log.Level = logrus.DebugLevel
+	if os.Getenv("DEBUG") == "1" {
+		Log.Level = logrus.DebugLevel
+	} else {
+		Log.Level = logrus.InfoLevel
+	}
 
 	// for production
 	// log.SetFormatter(&log.JSONFormatter{})
