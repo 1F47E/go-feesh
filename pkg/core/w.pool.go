@@ -66,6 +66,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 				continue
 			}
 			log.Debugf("got some new txs\n")
+			log.Warnf("new pool size: %d\n", len(poolTxs))
 
 			// copy pool txs mem for later reference what pool have
 			c.mu.Lock()
@@ -80,22 +81,30 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			// add history if time passed
 			// TODO: make pool history constructor
 			if len(c.poolSizeHistory) == 0 {
-				c.poolSizeHistory = append(c.poolSizeHistory, PoolHistory{
+				h := PoolHistory{
 					Created: time.Now(),
 					Size:    len(poolTxs),
-				})
+				}
+				c.poolSizeHistory = append(c.poolSizeHistory, h)
+				log.Warnf("pool history is empty, adding new: %+v\n", h)
 			} else {
 				last := c.poolSizeHistory[len(c.poolSizeHistory)-1]
 				if time.Since(last.Created) > poolSizeHistoryTimeFrame {
-					c.poolSizeHistory = append(c.poolSizeHistory, PoolHistory{
+					h := PoolHistory{
 						Created: time.Now(),
 						Size:    len(poolTxs),
-					})
+					}
+					c.poolSizeHistory = append(c.poolSizeHistory, h)
+					log.Warnf("pool history, adding new: %+v\n", h)
+				} else {
+					log.Warnf("pool history is not old, skipping\n")
 				}
 			}
 			// cleanup history
 			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
+				log.Warnf("pool history is too big, cleaning up. old len: %d\n", len(c.poolSizeHistory))
 				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
+				log.Warnf("new len: %d\n", len(c.poolSizeHistory))
 			}
 
 			// send new txs to parser
