@@ -101,6 +101,8 @@ func (c *Core) GetNodeInfo() (*info.Info, error) {
 }
 
 // parse last N blocks
+//
+//nolint:unused
 func (c *Core) bootstrap() {
 	// TODO: bootstap blocks
 	// get best block

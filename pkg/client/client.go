@@ -200,7 +200,7 @@ func (c *Client) GetBestBlock() (*ResponseGetBestBlock, error) {
 	var info ResponseGetBestBlock
 	err = json.Unmarshal(rawJson, &info)
 	if err != nil {
-		log.Log.Errorf("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response: %v", err)
 		return nil, err
 	}
 	return &info, nil
@@ -393,7 +393,7 @@ func (c *Client) TransactionDecode(txdata string) (*tx.Transaction, error) {
 	var resp tx.Transaction
 	err = json.Unmarshal(rawJson, &resp)
 	if err != nil {
-		log.Log.Errorf("error unmarshalling response:", err)
+		log.Log.Errorf("error unmarshalling response: %v", err)
 		return nil, err
 	}
 	return &resp, nil

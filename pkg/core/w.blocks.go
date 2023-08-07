@@ -44,6 +44,12 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 				continue
 			}
 
+			if len(c.blocks) > c.blockDepth {
+				log.Warnf("blocks buffer is full. dropping oldest block. have %d blocks", len(c.blocks))
+				c.blocks = c.blocks[:len(c.blocks)-1]
+				continue
+			}
+
 			// collect N block hashes
 			// around 3k txs in a block and around 1.5Meg for txs data
 			blocks := make([]string, 0)
@@ -107,6 +113,10 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 		case <-ticker.C:
 			// check blocks and what tx are parsed
 			txCnt := 0
+			if len(c.blocksIndex) == len(c.blocks) {
+				continue
+			}
+			log.Info("processing blocks")
 			for _, hash := range c.blocksIndex {
 				var bWeight, bSize, bFee, bAmount uint64
 				// log.Log.Debugf("checking block %s\n", hash)
@@ -129,7 +139,7 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 						log.Debugf("block %s tx %s fee %d amount %d\n", hash, txid, tx.Fee, tx.AmountOut)
 					}
 				}
-				log.Debugf("block %s has tx %s parsed. total fee: %d amount: %d\n", hash, cnt, bFee, bAmount)
+				log.Debugf("block %s has tx %d parsed. total fee: %d amount: %d\n", hash, cnt, bFee, bAmount)
 				txCnt += cnt
 				// save block stats
 				b := mblock.Block{
@@ -141,6 +151,7 @@ func (c *Core) workerBlocksProcessor(period time.Duration) {
 					Value:  bAmount,
 				}
 				c.blocks = append(c.blocks, b)
+				log.Infof("block %s added to blocks list. cnt: %d\n", hash, cnt)
 				// TODO: add to storage
 				// l.Debugf("block %s has %d/%d txs parsed. Weight: %d, Amount: %d", hash, cnt, len(txs), bWeight, bAmount)
 			}
