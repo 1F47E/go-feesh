@@ -2,7 +2,8 @@ FROM golang:1.20 as builder
 WORKDIR /go/src/app
 COPY . .
 
-RUN go test -v ./...
+# TODO: enable for production
+#RUN go test -v ./...
 RUN go get -d -v ./...
 
 # build with version

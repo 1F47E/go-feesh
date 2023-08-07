@@ -78,35 +78,6 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			}
 			c.mu.Unlock()
 
-			// add history if time passed
-			// TODO: make pool history constructor
-			if len(c.poolSizeHistory) == 0 {
-				h := PoolHistory{
-					Created: time.Now(),
-					Size:    len(poolTxs),
-				}
-				c.poolSizeHistory = append(c.poolSizeHistory, h)
-				log.Warnf("pool history is empty, adding new: %+v\n", h)
-			} else {
-				last := c.poolSizeHistory[len(c.poolSizeHistory)-1]
-				if time.Since(last.Created) > poolSizeHistoryTimeFrame {
-					h := PoolHistory{
-						Created: time.Now(),
-						Size:    len(poolTxs),
-					}
-					c.poolSizeHistory = append(c.poolSizeHistory, h)
-					log.Warnf("pool history, adding new: %+v\n", h)
-				} else {
-					log.Warnf("pool history is not old, skipping\n")
-				}
-			}
-			// cleanup history
-			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
-				log.Warnf("pool history is too big, cleaning up. old len: %d\n", len(c.poolSizeHistory))
-				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
-				log.Warnf("new len: %d\n", len(c.poolSizeHistory))
-			}
-
 			// send new txs to parser
 			for _, tx := range poolTxs {
 				// skip if already parsed
@@ -221,6 +192,39 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			// TODO: fee estimator
 
+			// pool size history
+
+			// add history if time passed
+			// TODO: make pool history constructor
+			size := len(c.poolSorted)
+			if len(c.poolSizeHistory) == 0 {
+				h := PoolHistory{
+					Created: time.Now(),
+					Size:    size,
+				}
+				c.poolSizeHistory = append(c.poolSizeHistory, h)
+				log.Warnf("pool history is empty, adding new: %+v\n", h)
+			} else {
+				last := c.poolSizeHistory[len(c.poolSizeHistory)-1]
+				if time.Since(last.Created) > poolSizeHistoryTimeFrame {
+					h := PoolHistory{
+						Created: time.Now(),
+						Size:    size,
+					}
+					c.poolSizeHistory = append(c.poolSizeHistory, h)
+					log.Warnf("pool history, adding new: %+v\n", h)
+				} else {
+					log.Warnf("pool history is not old, skipping\n")
+				}
+			}
+			// cleanup history
+			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
+				log.Warnf("pool history is too big, cleaning up. old len: %d\n", len(c.poolSizeHistory))
+				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
+				log.Warnf("new len: %d\n", len(c.poolSizeHistory))
+			}
+
+			// Calc fee buckets
 			bucketsMap := make(map[uint]uint)
 			for i, b := range buckets {
 				bucketsMap[b] = feeBuckets[i]
