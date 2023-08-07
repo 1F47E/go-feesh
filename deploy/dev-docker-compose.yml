@@ -2,6 +2,7 @@ version: "3"
 services:
   feesh-api:
     image: docker.io/1f47e/feesh-api:latest
+    pull_policy: always
     restart: on-failure:3
     ports:
     - 8080:8080
