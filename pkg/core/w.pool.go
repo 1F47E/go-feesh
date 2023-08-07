@@ -96,6 +96,32 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 	}
 }
 
+func (c *Core) workerPoolSizeHistory(period time.Duration) {
+	log := logger.Log.WithField("context", "[workerPoolSizeHistory]")
+	log.Info("started")
+	ticker := time.NewTicker(period)
+	defer func() {
+		log.Info("stopped")
+	}()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// add history if time passed
+			size := uint(len(c.poolSorted))
+			c.poolSizeHistory = append(c.poolSizeHistory, size)
+
+			// cleanup old records
+			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
+				// log.Warnf("pool history is too big, cleaning up. old len: %d\n", len(c.poolSizeHistory))
+				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
+				// log.Warnf("new len: %d\n", len(c.poolSizeHistory))
+			}
+		}
+	}
+}
+
 func (c *Core) workerPoolSorter(period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolSorter]")
 	log.Info("started")
@@ -192,38 +218,6 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			// TODO: fee estimator
 
-			// pool size history
-
-			// add history if time passed
-			// TODO: make pool history constructor
-			size := len(c.poolSorted)
-			if len(c.poolSizeHistory) == 0 {
-				h := PoolHistory{
-					Created: time.Now(),
-					Size:    size,
-				}
-				c.poolSizeHistory = append(c.poolSizeHistory, h)
-				log.Warnf("pool history is empty, adding new: %+v\n", h)
-			} else {
-				last := c.poolSizeHistory[len(c.poolSizeHistory)-1]
-				if time.Since(last.Created) > poolSizeHistoryTimeFrame {
-					h := PoolHistory{
-						Created: time.Now(),
-						Size:    size,
-					}
-					c.poolSizeHistory = append(c.poolSizeHistory, h)
-					log.Warnf("pool history, adding new: %+v\n", h)
-				} else {
-					log.Warnf("pool history is not old, skipping\n")
-				}
-			}
-			// cleanup history
-			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
-				log.Warnf("pool history is too big, cleaning up. old len: %d\n", len(c.poolSizeHistory))
-				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
-				log.Warnf("new len: %d\n", len(c.poolSizeHistory))
-			}
-
 			// Calc fee buckets
 			bucketsMap := make(map[uint]uint)
 			for i, b := range buckets {
@@ -247,8 +241,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			var feeBucketsArr [24]uint
 			copy(feeBucketsArr[:], feeBuckets)
 
-			var poolSizeHistory [20]int
-			copy(poolSizeHistory[:], c.GetPoolSizeHistory())
+			var poolSizeHistory [20]uint
+			copy(poolSizeHistory[:], c.poolSizeHistory)
 			// send websocket update
 			msg := notificator.Msg{
 				Height:          c.height,

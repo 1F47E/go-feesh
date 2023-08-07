@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"os"
-	"sort"
 	"time"
 
 	"github.com/1F47E/go-feesh/pkg/client"
@@ -19,11 +18,6 @@ import (
 	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 )
-
-type PoolHistory struct {
-	Created time.Time `json:"created"`
-	Size    int       `json:"size"`
-}
 
 type Core struct {
 	ctx     context.Context
@@ -45,7 +39,7 @@ type Core struct {
 	poolCopy        []txpool.TxPool
 	poolCopyMap     map[string]txpool.TxPool
 	poolSorted      []mtx.Tx
-	poolSizeHistory []PoolHistory
+	poolSizeHistory []uint
 
 	blockDepth  int      // how deep to scan the blocks from the top
 	blocksIndex []string // keep track of parsed blocks
@@ -67,7 +61,7 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 		poolCopy:        make([]txpool.TxPool, 0),
 		poolCopyMap:     make(map[string]txpool.TxPool),
 		poolSorted:      make([]mtx.Tx, 0),
-		poolSizeHistory: make([]PoolHistory, 0),
+		poolSizeHistory: make([]uint, 0),
 		// blocks:      make([]*mblock.Block, 0),
 		blockDepth:  cfg.BlocksParsingDepth,
 		blocksIndex: make([]string, 0),
@@ -103,6 +97,7 @@ func (c *Core) Start() {
 
 	go c.workerPoolPuller(1 * time.Second)
 	go c.workerPoolSorter(1 * time.Second)
+	go c.workerPoolSizeHistory(1 * time.Minute)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
@@ -134,16 +129,17 @@ func (c *Core) GetPoolSize() int {
 	return len(c.poolSorted)
 }
 
-func (c *Core) GetPoolSizeHistory() []int {
-	history := make([]int, 0)
-	for _, h := range c.poolSizeHistory {
-		history = append(history, h.Size)
-	}
+func (c *Core) GetPoolSizeHistory() []uint {
+	return c.poolSizeHistory
+	// history := make([]int, 0)
+	// for _, h := range c.poolSizeHistory {
+	// 	history = append(history, h.Size)
+	// }
 	// reverse
-	sort.Slice(history, func(i, j int) bool {
-		return history[i] > history[j]
-	})
-	return history
+	// sort.Slice(history, func(i, j int) bool {
+	// 	return history[i] > history[j]
+	// })
+	// return history
 }
 
 func (c *Core) GetTotalAmount() uint64 {

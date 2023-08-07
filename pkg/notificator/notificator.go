@@ -13,7 +13,7 @@ var log = logger.Log.WithField("scope", "notificator")
 type Msg struct {
 	Height          int      `json:"height"`
 	PoolSize        int      `json:"size"`
-	PoolSizeHistory [20]int  `json:"size_history"`
+	PoolSizeHistory [20]uint `json:"size_history"`
 	TotalFee        int      `json:"fee"`
 	AvgFee          int      `json:"avg_fee"`
 	Amount          int      `json:"amount"`

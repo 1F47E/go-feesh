@@ -26,7 +26,7 @@ type FeeBucket struct {
 type PoolResponse struct {
 	Height      int    `json:"height"`
 	Size        int    `json:"size"`
-	SizeHistory []int  `json:"size_history"`
+	SizeHistory []uint `json:"size_history"`
 	Amount      uint64 `json:"amount"`
 	Weight      uint64 `json:"weight"`
 	Fee         uint64 `json:"fee"`
