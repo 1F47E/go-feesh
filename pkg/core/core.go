@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"math"
 	"os"
 	"time"
 
@@ -129,17 +130,19 @@ func (c *Core) GetPoolSize() int {
 	return len(c.poolSorted)
 }
 
-func (c *Core) GetPoolSizeHistory() []uint {
-	return c.poolSizeHistory
-	// history := make([]int, 0)
-	// for _, h := range c.poolSizeHistory {
-	// 	history = append(history, h.Size)
-	// }
-	// reverse
-	// sort.Slice(history, func(i, j int) bool {
-	// 	return history[i] > history[j]
-	// })
-	// return history
+func (c *Core) GetPoolSizeHistory(isLog bool) []uint {
+	if !isLog {
+		return c.poolSizeHistory
+	}
+	history := make([]uint, 0)
+	copy(history, c.poolSizeHistory)
+	// Transform data using log10
+	for i, v := range history {
+		// Adding 1 to avoid log(0)
+		logValue := math.Log10(float64(v) + 1)
+		history[i] = uint(logValue)
+	}
+	return history
 }
 
 func (c *Core) GetTotalAmount() uint64 {
