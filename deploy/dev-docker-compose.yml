@@ -1,0 +1,19 @@
+version: "3"
+services:
+  feesh-api:
+    image: docker.io/1f47e/feesh-api:latest
+    restart: on-failure:3
+    ports:
+    - 8080:8080
+    environment:
+      KAFKA_BROKER_ID: '1'
+      RPC_USER: 'rpcuser'
+      RPC_PASS: 'rpcpass'
+      RPC_HOST: 'http://localhost:8334'
+      RPC_LIMIT: '420'
+      API_HOST: 'localhost:8080'
+      BLOCKS_PARSING_DEPTH: '1'
+
+
+
+

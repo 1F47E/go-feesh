@@ -1,0 +1,6 @@
+ quick kube deploy
+ 
+ 1. build and push image to registry via github actions (.github) or build_and_push.sh
+ 2. run tools/get-external-ip.sh to get external IP
+ 3. add DNS record of external IP pointing to specified domain name in ingress host
+

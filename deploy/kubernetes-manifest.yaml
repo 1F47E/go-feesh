@@ -1,0 +1,69 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: feesh-ingress
+spec:
+  rules:
+  - host: ton.zonde.space
+    http:
+        paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: feesh
+              port:
+                number: 80
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: feesh
+spec:
+  type: LoadBalancer
+  selector:
+    app: feesh
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feesh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feesh
+  template:
+    metadata:
+      labels:
+        app: feesh
+    spec:
+      containers:
+      - name: feesh-api
+        image: docker.io/1F47E/feesh-api
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        env:
+        - name: PRODUCTION
+          value: "1"
+        - name: NETWORK_TYPE
+          value: "MAINNET"
+        - name: RPC_USER
+          value: "rpcuser"
+        - name: RPC_PASS
+          value: "rpcpass"
+        - name: RPC_HOST
+          value: "http://localhost:8334"
+        - name: RPC_LIMIT
+          value: "420"
+        - name: API_HOST
+          value: "localhost:8080"
+        - name: BLOCKS_PARSING_DEPTH
+          value: "100"
+        imagePullPolicy: Always
