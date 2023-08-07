@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"sort"
 
 	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
 	"github.com/1F47E/go-feesh/pkg/logger"
@@ -18,13 +19,18 @@ type BlockWrapper struct {
 	// TxCount int `json:"tx_count"`
 }
 
+type FeeBucket struct {
+	Name  uint `json:"name"`
+	Value uint `json:"value"`
+}
+
 type PoolResponse struct {
 	Height     int            `json:"height"`
 	Size       int            `json:"size"`
 	Amount     uint64         `json:"amount"`
 	Weight     uint64         `json:"weight"`
 	Fee        uint64         `json:"fee"`
-	FeeBuckets map[uint]uint  `json:"fee_buckets"`
+	FeeBuckets []FeeBucket    `json:"fee_buckets"`
 	Txs        []mtx.Tx       `json:"txs"`
 	Blocks     []BlockWrapper `json:"blocks"`
 }
@@ -57,13 +63,24 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 			Weight: b.Weight,
 		})
 	}
+	feeBuckets := make([]FeeBucket, 0)
+	for k, v := range a.core.GetFeeBuckets() {
+		feeBuckets = append(feeBuckets, FeeBucket{
+			Name:  k,
+			Value: v,
+		})
+	}
+	// sort buckets by name
+	sort.Slice(feeBuckets, func(i, j int) bool {
+		return feeBuckets[i].Name < feeBuckets[j].Name
+	})
 	ret := PoolResponse{
 		Height:     a.core.GetHeight(),
 		Size:       a.core.GetPoolSize(),
 		Amount:     a.core.GetTotalAmount(),
 		Weight:     a.core.GetTotalWeight(),
 		Fee:        a.core.GetTotalFee(),
-		FeeBuckets: a.core.GetFeeBuckets(),
+		FeeBuckets: feeBuckets,
 		Txs:        txs,
 		Blocks:     blocks,
 	}
