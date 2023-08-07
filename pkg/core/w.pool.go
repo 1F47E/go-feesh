@@ -11,6 +11,13 @@ import (
 	"github.com/1F47E/go-feesh/pkg/notificator"
 )
 
+// last bucket is 500+
+var buckets = []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499, 500}
+
+// var poolSizeHistoryTimeFrame = 1 * time.Minute
+var poolSizeHistoryTimeFrame = 5 * time.Second
+var poolSizeHistoryLimit = 40
+
 func (c *Core) workerPoolPuller(period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolPuller]")
 	log.Info("started")
@@ -70,6 +77,27 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 			}
 			c.mu.Unlock()
 
+			// add history if time passed
+			// TODO: make pool history constructor
+			if len(c.poolSizeHistory) == 0 {
+				c.poolSizeHistory = append(c.poolSizeHistory, PoolHistory{
+					Created: time.Now(),
+					Size:    len(poolTxs),
+				})
+			} else {
+				last := c.poolSizeHistory[len(c.poolSizeHistory)-1]
+				if time.Since(last.Created) > poolSizeHistoryTimeFrame {
+					c.poolSizeHistory = append(c.poolSizeHistory, PoolHistory{
+						Created: time.Now(),
+						Size:    len(poolTxs),
+					})
+				}
+			}
+			// cleanup history
+			if len(c.poolSizeHistory) > poolSizeHistoryLimit {
+				c.poolSizeHistory = c.poolSizeHistory[len(c.poolSizeHistory)-poolSizeHistoryLimit:]
+			}
+
 			// send new txs to parser
 			for _, tx := range poolTxs {
 				// skip if already parsed
@@ -112,8 +140,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			// collect parsed txs based on pool copy
 			// also count totals
 			var amount, fee, weight uint64
-			buckets := []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499}
-			feeBuckets := make([]uint, len(buckets)+1)
+			feeBuckets := make([]uint, len(buckets))
 
 			for _, tx := range c.poolCopy {
 				// get parsed tx
@@ -137,6 +164,10 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 				// count fee buckets
 				feeB := parsedTx.FeePerByte()
+				// fix max fee
+				if feeB > 500 {
+					feeB = 500
+				}
 				bucket := 0
 				for i, b := range buckets {
 					if feeB <= b {
@@ -144,12 +175,10 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 						break
 					}
 				}
-				// fee is too big
-				if feeB > buckets[len(buckets)-1] {
-					bucket = len(buckets)
-				}
+
 				feeBuckets[bucket]++
 			}
+			// log.Warnf("fee buckets: (%d) %v\n", len(feeBuckets), feeBuckets)
 
 			// sort by fee - check if tx will fit in the next block
 			sort.Slice(res, func(i, j int) bool {
@@ -202,18 +231,21 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			}
 			// fee butkets
 			// TODO: move size to const
-			var feeBucketsArr [23]uint
+			var feeBucketsArr [24]uint
 			copy(feeBucketsArr[:], feeBuckets)
 
+			var poolSizeHistory [20]int
+			copy(poolSizeHistory[:], c.GetPoolSizeHistory())
 			// send websocket update
 			msg := notificator.Msg{
-				Height:     c.height,
-				PoolSize:   len(res),
-				TotalFee:   int(fee),
-				AvgFee:     feeAvg,
-				Amount:     int(amount),
-				Weight:     int(weight),
-				FeeBuckets: feeBucketsArr,
+				Height:          c.height,
+				PoolSize:        len(res),
+				PoolSizeHistory: poolSizeHistory,
+				TotalFee:        int(fee),
+				AvgFee:          feeAvg,
+				Amount:          int(amount),
+				Weight:          int(weight),
+				FeeBuckets:      feeBucketsArr,
 			}
 			go c.nofity(msg)
 		}
