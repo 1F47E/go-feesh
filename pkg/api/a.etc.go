@@ -1,6 +1,7 @@
 package api
 
 import (
+	"os"
 	"runtime"
 
 	fiber "github.com/gofiber/fiber/v2"
@@ -8,6 +9,19 @@ import (
 
 func (a *Api) Ping(c *fiber.Ctx) error {
 	return c.SendString("pong")
+}
+
+type VersionResponse struct {
+	Version   string `json:"version"`
+	BuildTime string `json:"build_time"`
+}
+
+func (a *Api) Version(c *fiber.Ctx) error {
+	ret := VersionResponse{
+		Version:   os.Getenv("BUILD_VERSION"),
+		BuildTime: os.Getenv("BUILD_TIME"),
+	}
+	return c.JSON(ret)
 }
 
 func (a *Api) NodeInfo(c *fiber.Ctx) error {

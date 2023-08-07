@@ -47,6 +47,8 @@ func NewApi(core *core.Core, notificator *notificator.Notificator) *Api {
 	api.Get("/monitor", monitor.New())
 	api.Get("/stats", a.Stats)
 	api.Get("/info", a.NodeInfo)
+	api.Get("/ping", a.Ping)
+	api.Get("/version", a.Version)
 	api.Get("/pool", a.Pool)
 
 	// websockets
