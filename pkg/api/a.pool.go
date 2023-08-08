@@ -68,7 +68,7 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 	ret := PoolResponse{
 		Height:      a.core.GetHeight(),
 		Size:        a.core.GetPoolSize(),
-		SizeHistory: a.core.GetPoolSizeHistory(true),
+		SizeHistory: a.core.GetPoolSizeHistory(),
 		Amount:      a.core.GetTotalAmount(),
 		Weight:      a.core.GetTotalWeight(),
 		Fee:         a.core.GetTotalFee(),

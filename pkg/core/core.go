@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"math"
 	"os"
 	"time"
 
@@ -98,7 +97,7 @@ func (c *Core) Start() {
 
 	go c.workerPoolPuller(1 * time.Second)
 	go c.workerPoolSorter(1 * time.Second)
-	go c.workerPoolSizeHistory(1 * time.Minute)
+	go c.workerPoolSizeHistory(10 * time.Minute)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
@@ -130,19 +129,8 @@ func (c *Core) GetPoolSize() int {
 	return len(c.poolSorted)
 }
 
-func (c *Core) GetPoolSizeHistory(isLog bool) []uint {
-	if !isLog {
-		return c.poolSizeHistory
-	}
-	history := make([]uint, 0)
-	copy(history, c.poolSizeHistory)
-	// Transform data using log10
-	for i, v := range history {
-		// Adding 1 to avoid log(0)
-		logValue := math.Log10(float64(v) + 1)
-		history[i] = uint(logValue)
-	}
-	return history
+func (c *Core) GetPoolSizeHistory() []uint {
+	return c.poolSizeHistory
 }
 
 func (c *Core) GetTotalAmount() uint64 {
