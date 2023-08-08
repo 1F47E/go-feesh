@@ -70,12 +70,11 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		Size:        a.core.GetPoolSize(),
 		SizeHistory: a.core.GetPoolSizeHistory(),
 		Amount:      a.core.GetTotalAmount(),
-		Weight:      a.core.GetTotalWeight(),
+		Weight:      a.core.GetTotalSize(),
 		Fee:         a.core.GetTotalFee(),
 		FeeBuckets:  a.core.GetFeeBuckets(),
 		Txs:         txs,
 		Blocks:      blocks,
 	}
-	log.Infof("pool size: %d\n", ret.Size)
 	return apiSuccess(c, ret)
 }

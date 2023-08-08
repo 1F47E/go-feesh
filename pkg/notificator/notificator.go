@@ -17,7 +17,7 @@ type Msg struct {
 	TotalFee        int      `json:"fee"`
 	AvgFee          int      `json:"avg_fee"`
 	Amount          int      `json:"amount"`
-	Weight          int      `json:"weight"`
+	Size            int      `json:"weight"`
 	FeeBuckets      [24]uint `json:"fee_buckets"`
 }
 

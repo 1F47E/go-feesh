@@ -31,7 +31,8 @@ type Core struct {
 	height      int
 	totalFee    uint64
 	totalAmount uint64
-	totalWeight uint64
+	// totalWeight uint64
+	totalSize uint64
 
 	feeBucketsMap map[uint]uint
 	feeBuckets    []uint
@@ -153,8 +154,11 @@ func (c *Core) GetFeeBuckets() []uint {
 	return c.feeBuckets
 }
 
-func (c *Core) GetTotalWeight() uint64 {
-	return c.totalWeight
+func (c *Core) GetTotalSize() uint64 {
+	sizeBytes := c.totalSize
+	sizeKb := sizeBytes / 1024
+	// sizeMb := sizeKb / 1024
+	return sizeKb
 }
 
 func (c *Core) GetBlocks() []mblock.Block {

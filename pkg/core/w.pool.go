@@ -166,7 +166,11 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 				// totals
 				amount += parsedTx.AmountOut
-				fee += parsedTx.Fee
+
+				// avoid mining fee
+				if parsedTx.Fee > 0 {
+					fee += parsedTx.Fee
+				}
 				weight += uint64(parsedTx.Weight)
 
 				// count fee buckets
@@ -191,15 +195,15 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			sort.Slice(res, func(i, j int) bool {
 				return res[i].Fee > res[j].Fee
 			})
-			var totalWeight uint32
+			var totalSize uint32
 			for i := range res {
 				if res[i].Fee == 0 {
 					continue
 				}
-				if totalWeight+res[i].Weight > config.BLOCK_SIZE {
+				if totalSize+res[i].Size > config.BLOCK_SIZE {
 					break
 				}
-				totalWeight += res[i].Weight
+				totalSize += res[i].Size
 				res[i].Fits = true
 			}
 
@@ -215,7 +219,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.poolSorted = res
 			c.totalAmount = amount
 			c.totalFee = fee
-			c.totalWeight = weight
+			c.totalSize = uint64(totalSize)
 
 			// TODO: fee estimator
 
@@ -244,15 +248,16 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			var poolSizeHistory [20]uint
 			copy(poolSizeHistory[:], c.poolSizeHistory)
+
 			// send websocket update
 			msg := notificator.Msg{
 				Height:          c.height,
 				PoolSize:        len(res),
 				PoolSizeHistory: poolSizeHistory,
-				TotalFee:        int(fee),
+				TotalFee:        int(c.totalFee),
 				AvgFee:          feeAvg,
 				Amount:          int(amount),
-				Weight:          int(weight),
+				Size:            int(totalSize),
 				FeeBuckets:      feeBucketsArr,
 			}
 			go c.nofity(msg)
@@ -289,7 +294,7 @@ func (c *Core) workerPoolDebug(period time.Duration) {
 				TotalFee:        r.Intn(1000),
 				AvgFee:          r.Intn(1000),
 				Amount:          r.Intn(1000),
-				Weight:          r.Intn(1000),
+				Size:            r.Intn(1000),
 				FeeBuckets:      buckets,
 			}
 			go c.nofity(msg)
