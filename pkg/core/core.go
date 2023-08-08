@@ -29,8 +29,11 @@ type Core struct {
 	broadcastCh chan notificator.Msg
 
 	height int
+
 	// because total fee in sat will overflow uint64, sat in 1000 sats
-	totalFee    uint64
+	poolFeeTotal uint64
+	poolFeeAvg   uint64
+
 	totalAmount uint64
 	// totalWeight uint64
 	totalSize uint64
@@ -144,11 +147,11 @@ func (c *Core) GetTotalAmount() uint64 {
 }
 
 func (c *Core) GetFeeTotal() uint64 {
-	return c.totalFee
+	return c.poolFeeTotal
 }
 
 func (c *Core) GetFeeAvg() uint64 {
-	return c.totalFee
+	return c.poolFeeAvg
 }
 
 func (c *Core) GetFeeBucketsMap() map[uint]uint {

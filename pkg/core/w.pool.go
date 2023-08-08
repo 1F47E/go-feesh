@@ -220,7 +220,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			prevPoolCnt := len(c.poolSorted)
 			c.poolSorted = res
 			c.totalAmount = amount
-			c.totalFee = uint64(totalFee1000)
+			c.poolFeeTotal = uint64(totalFee1000)
 			c.totalSize = uint64(totalSize)
 
 			// TODO: fee estimator
@@ -239,10 +239,11 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				log.Debugf("total txs: %d\n", len(res))
 			}
 
-			feeAvg := 0
+			var feeAvg float64
 			if len(res) > 0 {
-				feeAvg = int(uint64(totalFee1000) / uint64(totalSize))
+				feeAvg = float64(totalFee1000) / float64(totalSize)
 			}
+			c.poolFeeAvg = uint64(feeAvg * 1000)
 			// fee butkets
 			// TODO: move size to const
 			var feeBucketsArr [24]uint
@@ -256,8 +257,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				Height:          c.height,
 				PoolSize:        len(res),
 				PoolSizeHistory: poolSizeHistory,
-				TotalFee:        int(c.totalFee),
-				AvgFee:          feeAvg,
+				TotalFee:        int(c.poolFeeTotal),
+				AvgFee:          int(c.poolFeeAvg),
 				Amount:          int(amount),
 				Size:            int(totalSize),
 				FeeBuckets:      feeBucketsArr,
