@@ -1,6 +1,7 @@
 package core
 
 import (
+	"math/rand"
 	"sort"
 	"time"
 
@@ -253,6 +254,43 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				Amount:          int(amount),
 				Weight:          int(weight),
 				FeeBuckets:      feeBucketsArr,
+			}
+			go c.nofity(msg)
+		}
+	}
+}
+
+func (c *Core) workerPoolDebug(period time.Duration) {
+	log := logger.Log.WithField("context", "[workerPoolDebug]")
+	log.Info("started")
+	ticker := time.NewTicker(period)
+	defer func() {
+		log.Info("stopped")
+	}()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// send random msg
+			history := [20]uint{}
+			for i := range history {
+				history[i] = uint(rand.Intn(1000))
+			}
+			buckets := [24]uint{}
+			for i := range buckets {
+				buckets[i] = uint(rand.Intn(1000))
+			}
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			msg := notificator.Msg{
+				Height:          r.Intn(1000),
+				PoolSize:        r.Intn(1000),
+				PoolSizeHistory: history,
+				TotalFee:        r.Intn(1000),
+				AvgFee:          r.Intn(1000),
+				Amount:          r.Intn(1000),
+				Weight:          r.Intn(1000),
+				FeeBuckets:      buckets,
 			}
 			go c.nofity(msg)
 		}

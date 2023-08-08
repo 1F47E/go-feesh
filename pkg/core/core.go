@@ -95,9 +95,13 @@ func (c *Core) Start() {
 		go c.workerTxParser(i + 1)
 	}
 
+	if os.Getenv("DEBUG") == "WS" {
+		go c.workerPoolDebug(1 * time.Second)
+		return
+	}
 	go c.workerPoolPuller(1 * time.Second)
 	go c.workerPoolSorter(1 * time.Second)
-	go c.workerPoolSizeHistory(10 * time.Minute)
+	go c.workerPoolSizeHistory(10 * time.Second)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
