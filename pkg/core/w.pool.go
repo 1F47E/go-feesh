@@ -146,7 +146,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			c.mu.Lock()
 			// collect parsed txs based on pool copy
 			// also count totals
-			var amount, fee, weight uint64
+			var amount, weight uint64
+			var totalFee1000 float64
 			feeBuckets := make([]uint, len(buckets))
 
 			for _, tx := range c.poolCopy {
@@ -169,7 +170,8 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 				// avoid mining fee
 				if parsedTx.Fee > 0 {
-					fee += parsedTx.Fee
+					// because total fee in sat will overflow uint64, storing in 1000 sat with approx precision
+					totalFee1000 += float64(parsedTx.Fee) / 1000
 				}
 				weight += uint64(parsedTx.Weight)
 
@@ -218,7 +220,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 			prevPoolCnt := len(c.poolSorted)
 			c.poolSorted = res
 			c.totalAmount = amount
-			c.totalFee = fee
+			c.totalFee = uint64(totalFee1000)
 			c.totalSize = uint64(totalSize)
 
 			// TODO: fee estimator
@@ -239,7 +241,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			feeAvg := 0
 			if len(res) > 0 {
-				feeAvg = int(fee / uint64(len(res)))
+				feeAvg = int(uint64(totalFee1000) / uint64(len(res)))
 			}
 			// fee butkets
 			// TODO: move size to const

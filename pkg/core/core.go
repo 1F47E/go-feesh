@@ -28,7 +28,8 @@ type Core struct {
 	// ws
 	broadcastCh chan notificator.Msg
 
-	height      int
+	height int
+	// because total fee in sat will overflow uint64, sat in 1000 sats
 	totalFee    uint64
 	totalAmount uint64
 	// totalWeight uint64
