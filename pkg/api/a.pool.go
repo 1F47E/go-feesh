@@ -30,6 +30,7 @@ type PoolResponse struct {
 	Amount      uint64 `json:"amount"`
 	Weight      uint64 `json:"weight"`
 	Fee         uint64 `json:"fee"`
+	FeeAvg      uint64 `json:"fee_avg"`
 	// FeeBuckets []FeeBucket    `json:"fee_buckets"`
 	FeeBuckets []uint         `json:"fee_buckets"`
 	Txs        []mtx.Tx       `json:"txs"`
@@ -71,7 +72,8 @@ func (a *Api) Pool(c *fiber.Ctx) error {
 		SizeHistory: a.core.GetPoolSizeHistory(),
 		Amount:      a.core.GetTotalAmount(),
 		Weight:      a.core.GetTotalSize(),
-		Fee:         a.core.GetTotalFee(),
+		Fee:         a.core.GetFeeTotal(),
+		FeeAvg:      a.core.GetFeeAvg(),
 		FeeBuckets:  a.core.GetFeeBuckets(),
 		Txs:         txs,
 		Blocks:      blocks,

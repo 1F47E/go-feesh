@@ -241,7 +241,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 			feeAvg := 0
 			if len(res) > 0 {
-				feeAvg = int(uint64(totalFee1000) / uint64(len(res)))
+				feeAvg = int(uint64(totalFee1000) / uint64(totalSize))
 			}
 			// fee butkets
 			// TODO: move size to const

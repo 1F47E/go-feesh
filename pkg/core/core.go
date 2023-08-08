@@ -143,7 +143,11 @@ func (c *Core) GetTotalAmount() uint64 {
 	return c.totalAmount
 }
 
-func (c *Core) GetTotalFee() uint64 {
+func (c *Core) GetFeeTotal() uint64 {
+	return c.totalFee
+}
+
+func (c *Core) GetFeeAvg() uint64 {
 	return c.totalFee
 }
 
