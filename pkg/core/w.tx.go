@@ -35,11 +35,11 @@ func (c *Core) workerTxParser(n int) {
 			// in order to calc fee we need input amounts.
 			// to get them we have to parse Vin tx amounts
 			// find out amount from vin tx matching by vout index
-			var in int64
+			var in uint64
 			for _, vin := range btx.Vin {
 				// mined
 				if vin.Coinbase != "" {
-					in = -1
+					log.Warnf("got coinbase tx: %s\n", txid)
 					continue
 				}
 				txIn, err := c.cli.TransactionGet(vin.Txid)
@@ -47,12 +47,7 @@ func (c *Core) workerTxParser(n int) {
 					log.Errorf("error getting vin tx: %v\n", err)
 					break
 				}
-				for _, vout := range txIn.Vout {
-					if vout.N != vin.Vout {
-						continue
-					}
-					in += int64(vout.Value * 1_0000_0000)
-				}
+				in = txIn.GetTotalOut()
 
 				// remap raw tx to model and save
 				// TODO: make constructor
@@ -71,6 +66,7 @@ func (c *Core) workerTxParser(n int) {
 					log.Errorf("no input amount, skipping tx: %s\n", txid)
 				}
 				// -1 is coinbase, no need to log error
+				continue
 			}
 
 			// remap raw tx to model
