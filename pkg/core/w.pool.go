@@ -90,7 +90,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 				if exists != nil {
 					continue
 				}
-				// log.Log.Debugf("%s new tx, sending to parser: %s\n", name, tx.Txid)
+				log.Debugf("new pool tx, sending to parser: %+v\n", tx)
 				c.parserJobCh <- tx.Txid
 			}
 		}
