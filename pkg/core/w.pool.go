@@ -168,11 +168,12 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 				// totals
 				amount += parsedTx.AmountOut
 
-				// avoid mining fee
-				if parsedTx.Fee > 0 {
-					// because total fee in sat will overflow uint64, storing in 1000 sat with approx precision
-					totalFee1000 += float64(parsedTx.Fee) / 1000
+				// because total fee in sat will overflow uint64, storing in 1000 sat with approx precision
+				txFee1000 := float64(parsedTx.Fee) / 1000
+				if txFee1000 > 10000 {
+					log.Warnf("tx fee is too big: %f, %+v\n", txFee1000, parsedTx)
 				}
+				totalFee1000 += txFee1000
 				weight += uint64(parsedTx.Weight)
 
 				// count fee buckets
