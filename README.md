@@ -1,5 +1,4 @@
-                                     
-
+![feesh](assets/banner.jpg)
 
 ## DEMO
 https://demo.feesh.io/
@@ -54,7 +53,7 @@ After patch it will return full tx info in a sorted array by time.
 - [x] API pool
 - [x] websockets
 
-WIP
+## react front end (WIP)
 ![feesh react front end](https://github.com/1F47E/react-feesh/raw/master/assets/screenshot.png)
 
 

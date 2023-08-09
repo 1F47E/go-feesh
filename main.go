@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -30,6 +31,15 @@ import (
 	_ "github.com/1F47E/go-feesh/docs"
 )
 
+const banner = `
+            _____ _____ _____ _____ _____ 
+           |   __|   __|   __|   __|  |  |
+           |   __|   __|   __|__   |     |
+           |__|  |_____|_____|_____|__|__|
+           bitcoin mempool stats
+
+`
+
 // global vars to be filled via build args and later used in api
 var version string
 var buildTime string
@@ -43,6 +53,9 @@ var cli *client.Client
 // @BasePath /v1
 // @schemes https
 func main() {
+	fmt.Print(banner)
+	fmt.Println()
+
 	// set env with version (from binary)
 	os.Setenv("BUILD_VERSION", version)
 	os.Setenv("BUILD_TIME", buildTime)
