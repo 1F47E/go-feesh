@@ -106,7 +106,7 @@ func (c *Core) Start() {
 	}
 	go c.workerPoolPuller(1 * time.Second)
 	go c.workerPoolSorter(1 * time.Second)
-	go c.workerPoolSizeHistory(10 * time.Second)
+	go c.workerPoolSizeHistory(5 * time.Minute)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
