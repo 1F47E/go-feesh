@@ -170,7 +170,7 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 
 				// because total fee in sat will overflow uint64, storing in 1000 sat with approx precision
 				txFee1000 := float64(parsedTx.Fee) / 1000
-				if txFee1000 > 10000 {
+				if txFee1000 > 10 {
 					log.Warnf("tx fee is too big: %f, %+v\n", txFee1000, parsedTx)
 				}
 				totalFee1000 += txFee1000
