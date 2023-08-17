@@ -3,7 +3,7 @@ package storage_map
 import (
 	"sync"
 
-	"github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	"github.com/1F47E/go-feesh/entity/models/tx"
 )
 
 type MapStorage struct {

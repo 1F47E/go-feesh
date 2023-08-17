@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	"github.com/1F47E/go-feesh/entity/models/tx"
 
 	redis "github.com/redis/go-redis/v9"
 )

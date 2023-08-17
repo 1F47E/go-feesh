@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/entity/btc/txpool"
+	log "github.com/1F47E/go-feesh/logger"
 )
 
 // rawmempool request list of tx

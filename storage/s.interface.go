@@ -1,7 +1,7 @@
 package storage
 
 import (
-	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	mtx "github.com/1F47E/go-feesh/entity/models/tx"
 )
 
 type PoolRepository interface {

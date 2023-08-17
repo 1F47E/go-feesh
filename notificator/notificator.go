@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/logger"
 	"github.com/gofiber/websocket/v2"
 )
 

@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/1F47E/go-feesh/pkg/entity/btc/block"
-	"github.com/1F47E/go-feesh/pkg/entity/btc/info"
-	"github.com/1F47E/go-feesh/pkg/entity/btc/peer"
-	"github.com/1F47E/go-feesh/pkg/entity/btc/tx"
-	log "github.com/1F47E/go-feesh/pkg/logger"
+	"github.com/1F47E/go-feesh/entity/btc/block"
+	"github.com/1F47E/go-feesh/entity/btc/info"
+	"github.com/1F47E/go-feesh/entity/btc/peer"
+	"github.com/1F47E/go-feesh/entity/btc/tx"
+	log "github.com/1F47E/go-feesh/logger"
 )
 
 // ===== Data

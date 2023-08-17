@@ -5,18 +5,18 @@ import (
 	"os"
 	"time"
 
-	"github.com/1F47E/go-feesh/pkg/client"
-	"github.com/1F47E/go-feesh/pkg/config"
-	"github.com/1F47E/go-feesh/pkg/logger"
-	"github.com/1F47E/go-feesh/pkg/notificator"
-	"github.com/1F47E/go-feesh/pkg/storage"
+	"github.com/1F47E/go-feesh/client"
+	"github.com/1F47E/go-feesh/config"
+	"github.com/1F47E/go-feesh/logger"
+	"github.com/1F47E/go-feesh/notificator"
+	"github.com/1F47E/go-feesh/storage"
 
 	"sync"
 
-	"github.com/1F47E/go-feesh/pkg/entity/btc/info"
-	"github.com/1F47E/go-feesh/pkg/entity/btc/txpool"
-	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
-	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
+	"github.com/1F47E/go-feesh/entity/btc/info"
+	"github.com/1F47E/go-feesh/entity/btc/txpool"
+	mblock "github.com/1F47E/go-feesh/entity/models/block"
+	mtx "github.com/1F47E/go-feesh/entity/models/tx"
 )
 
 type Core struct {

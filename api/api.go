@@ -3,9 +3,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/1F47E/go-feesh/pkg/core"
-	"github.com/1F47E/go-feesh/pkg/logger"
-	"github.com/1F47E/go-feesh/pkg/notificator"
+	"github.com/1F47E/go-feesh/core"
+	"github.com/1F47E/go-feesh/logger"
+	"github.com/1F47E/go-feesh/notificator"
 
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

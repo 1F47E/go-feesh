@@ -3,8 +3,8 @@ package core
 import (
 	"time"
 
-	mblock "github.com/1F47E/go-feesh/pkg/entity/models/block"
-	"github.com/1F47E/go-feesh/pkg/logger"
+	mblock "github.com/1F47E/go-feesh/entity/models/block"
+	"github.com/1F47E/go-feesh/logger"
 )
 
 func (c *Core) workerParserBlocks(period time.Duration) {

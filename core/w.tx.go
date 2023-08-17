@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	mtx "github.com/1F47E/go-feesh/pkg/entity/models/tx"
-	"github.com/1F47E/go-feesh/pkg/logger"
+	mtx "github.com/1F47E/go-feesh/entity/models/tx"
+	"github.com/1F47E/go-feesh/logger"
 )
 
 // log carefull, there can be a lot of workers
