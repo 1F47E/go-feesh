@@ -2,10 +2,6 @@
 ## [![Build Status](https://github.com/1F47E/go-feesh/actions/workflows/go.yml/badge.svg)](https://github.com/1F47E/go-feesh/actions/workflows/go.yml)  [![Go Report Card](https://goreportcard.com/badge/1F47E/go-feesh)](https://goreportcard.com/report/1F47E/go-feesh)
 
 
-## DEMO
-https://demo.feesh.io/
-
-
 ## ENVS:
 ```                                           
 export RPC_USER='rpcuser'
