@@ -82,7 +82,7 @@ func (n *Notificator) workerWsHub() {
 					}
 					if err := connection.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
 						c.isClosing = true
-						log.Println("write error:", err)
+						log.Debugf("write error: %v", err)
 
 						err = connection.WriteMessage(websocket.CloseMessage, []byte{})
 						if err != nil {
@@ -98,7 +98,7 @@ func (n *Notificator) workerWsHub() {
 			// Remove the client from the hub
 			delete(n.clients, connection)
 
-			log.Println("connection unregistered")
+			log.Debugf("connection unregistered")
 		}
 	}
 }

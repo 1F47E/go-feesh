@@ -33,11 +33,12 @@ func NewApi(core *core.Core, notificator *notificator.Notificator) *Api {
 	app.Use(recover.New())
 
 	// Middleware function
-	app.Use(func(c *fiber.Ctx) error {
-		customLogger := logger.LoggerEntry{Entry: *logger.Log.WithField("path", c.Path())}
-		c.Locals("logger", customLogger)
-		return c.Next()
-	})
+	// TODO: refactor to use logger middleware with zerolog
+	// app.Use(func(c *fiber.Ctx) error {
+	// 	customLogger := logger.LoggerEntry{Entry: *logger.Log.WithField("path", c.Path())}
+	// 	c.Locals("logger", customLogger)
+	// 	return c.Next()
+	// })
 
 	a := Api{app, core, notificator}
 
@@ -65,7 +66,7 @@ func NewApi(core *core.Core, notificator *notificator.Notificator) *Api {
 			messageType, message, err := c.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Println("read error:", err)
+					log.Debugf("read error: %v", err)
 				}
 
 				return // Calls the deferred function, i.e. closes the connection on error
@@ -75,7 +76,7 @@ func NewApi(core *core.Core, notificator *notificator.Notificator) *Api {
 				log.Debugf("ws msg received: %s", message)
 				// TODO: receive pings
 			} else {
-				log.Error("websocket message received of type", messageType)
+				log.Errorf("websocket message received of type: %d", messageType)
 			}
 		}
 	}))
@@ -93,7 +94,7 @@ func (a *Api) Listen() error {
 	log.Info("Starting http server...")
 	err := a.app.Listen(a.core.Cfg.ApiHost)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error on listen: %v", err)
 	}
 	return nil
 }
