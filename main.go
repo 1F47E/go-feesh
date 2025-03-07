@@ -70,7 +70,7 @@ func main() {
 		// create RPC client
 		cli, err = client.NewClient(cfg.RpcHost, cfg.RpcUser, cfg.RpcPass)
 		if err != nil {
-			log.Fatalln("error creating client:", err)
+			log.Fatalf("error creating client: %v", err)
 		}
 
 		// get node info

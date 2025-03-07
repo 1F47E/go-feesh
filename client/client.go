@@ -61,25 +61,37 @@ func NewRPCRequest(method string, params interface{}) *RPCRequest {
 
 // ===== CLIENT
 type Client struct {
-	client   *http.Client
-	host     string
-	user     string
-	password string
-	retries  int
+	client      *http.Client
+	host        string
+	user        string
+	password    string
+	useGetblock bool
+	retries     int
 }
 
 func NewClient(host, user, password string) (*Client, error) {
-	if host == "" || user == "" || password == "" {
-		return nil, fmt.Errorf("RPC_HOST, RPC_USER and RPC_PASSWORD env vars must be set")
+	// Check if the host is non-empty
+	if host == "" {
+		return nil, fmt.Errorf("RPC_HOST or BTC_GETBLOCK env var must be set")
 	}
+
+	// Check if this is a GetBlock-style URL (token in URL)
+	useGetblock := false
+	if host != "" && (user == "" || password == "") {
+		// If host is provided but credentials are missing,
+		// assume token is in the URL (GetBlock style)
+		useGetblock = true
+	}
+
 	return &Client{
 		client: &http.Client{
 			Timeout: time.Second * 10, // getrawmempool verbose can take a long fucking time
 		},
-		host:     host,
-		user:     user,
-		password: password,
-		retries:  10,
+		host:        host,
+		user:        user,
+		password:    password,
+		useGetblock: useGetblock,
+		retries:     10,
 	}, nil
 }
 
@@ -95,7 +107,12 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.user, c.password)
+
+	// Only set basic auth if we're not using a GetBlock-style URL
+	if !c.useGetblock {
+		req.SetBasicAuth(c.user, c.password)
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 
@@ -107,6 +124,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 			if resp != nil && resp.StatusCode >= 500 {
 				l.Errorf("5xx error: %s", resp.Status)
 				// sleep randomly to not overload the node. Parsing the pool can be 100k+ items.
+				// TODO: make rate limiter
 				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
 				continue
 			}

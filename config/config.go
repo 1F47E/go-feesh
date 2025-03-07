@@ -13,23 +13,35 @@ type Config struct {
 	RpcUser            string
 	RpcPass            string
 	RpcHost            string
+	BtcGetblock        string // For services like GetBlock where auth token is in URL
+	UseGetblock        bool   // Flag to indicate if we should use GetBlock style auth
 	ApiHost            string
 	RpcLimit           int // btc node config should be updated to allow more connections
 	BlocksParsingDepth int
 }
 
 func NewConfig() *Config {
-	rpcUser := os.Getenv("RPC_USER")
-	if rpcUser == "" {
-		log.Log.Fatal("RPC_USER env var is required")
-	}
-	rpcPass := os.Getenv("RPC_PASS")
-	if rpcPass == "" {
-		log.Log.Fatal("RPC_PASS env var is required")
-	}
-	rpcHost := os.Getenv("RPC_HOST")
-	if rpcHost == "" {
-		log.Log.Fatal("RPC_HOST env var is required")
+	// Check if BTC_GETBLOCK is set first
+	btcGetblock := os.Getenv("BTC_GETBLOCK")
+	useGetblock := btcGetblock != ""
+
+	// If we're using GetBlock, we don't need RPC credentials
+	var rpcUser, rpcPass, rpcHost string
+	if !useGetblock {
+		rpcUser = os.Getenv("RPC_USER")
+		if rpcUser == "" {
+			log.Log.Fatal("RPC_USER env var is required when not using BTC_GETBLOCK")
+		}
+		rpcPass = os.Getenv("RPC_PASS")
+		if rpcPass == "" {
+			log.Log.Fatal("RPC_PASS env var is required when not using BTC_GETBLOCK")
+		}
+		rpcHost = os.Getenv("RPC_HOST")
+		if rpcHost == "" {
+			log.Log.Fatal("RPC_HOST env var is required when not using BTC_GETBLOCK")
+		}
+	} else {
+		rpcHost = btcGetblock
 	}
 
 	rpcStr := os.Getenv("RPC_LIMIT")
@@ -62,6 +74,8 @@ func NewConfig() *Config {
 		RpcUser:            rpcUser,
 		RpcPass:            rpcPass,
 		RpcHost:            rpcHost,
+		BtcGetblock:        btcGetblock,
+		UseGetblock:        useGetblock,
 		RpcLimit:           rpcLimit,
 		ApiHost:            apiHost,
 		BlocksParsingDepth: blocksDepth,
