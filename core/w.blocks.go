@@ -1,13 +1,14 @@
 package core
 
 import (
+	"context"
 	"time"
 
 	mblock "github.com/1F47E/go-feesh/entity/models/block"
 	"github.com/1F47E/go-feesh/logger"
 )
 
-func (c *Core) workerParserBlocks(period time.Duration) {
+func (c *Core) workerParserBlocks(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerParserBlocks]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
@@ -21,7 +22,7 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// get the block height
@@ -99,16 +100,17 @@ func (c *Core) workerParserBlocks(period time.Duration) {
 	}
 }
 
-func (c *Core) workerBlocksProcessor(period time.Duration) {
+func (c *Core) workerBlocksProcessor(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerBlocksProcessor]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Info("stopped")
+		log.Infof(" stopped\n")
+		ticker.Stop()
 	}()
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// check blocks and what tx are parsed

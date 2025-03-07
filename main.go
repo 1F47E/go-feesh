@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 
 	"github.com/1F47E/go-feesh/api"
 	"github.com/1F47E/go-feesh/client"
@@ -155,7 +156,18 @@ func main() {
 	a := api.NewApi(c, noficator)
 
 	// start main workers
-	c.Start()
+	c.Start(ctx)
+
+	// graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	go func() {
+		<-quit
+		cancel()
+		if err := a.Shutdown(); err != nil {
+			log.Fatalf("error on shutdown: %v", err)
+		}
+	}()
 
 	// start server
 	err = a.Listen()

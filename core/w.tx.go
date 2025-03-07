@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 // log carefull, there can be a lot of workers
-func (c *Core) workerTxParser(n int) {
+func (c *Core) workerTxParser(ctx context.Context, n int) {
 	log := logger.Log.WithField("context", fmt.Sprintf("[workerTxParser] #%d", n))
 	log.Trace("started")
 	defer func() {
@@ -17,7 +18,7 @@ func (c *Core) workerTxParser(n int) {
 	}()
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case txid := <-c.parserJobCh:
 			var err error

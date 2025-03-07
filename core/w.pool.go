@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"math/rand"
 	"sort"
 	"time"
@@ -18,7 +19,7 @@ var buckets = []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150
 // var poolSizeHistoryTimeFrame = 1 * time.Minute
 var poolSizeHistoryLimit = 40
 
-func (c *Core) workerPoolPuller(period time.Duration) {
+func (c *Core) workerPoolPuller(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolPuller]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
@@ -29,7 +30,7 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// get the block height
@@ -96,16 +97,18 @@ func (c *Core) workerPoolPuller(period time.Duration) {
 	}
 }
 
-func (c *Core) workerPoolSizeHistory(period time.Duration) {
+func (c *Core) workerPoolSizeHistory(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolSizeHistory]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Info("stopped")
+		log.Infof(" stopped\n")
+		ticker.Stop()
 	}()
+
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// add history if time passed
@@ -122,16 +125,18 @@ func (c *Core) workerPoolSizeHistory(period time.Duration) {
 	}
 }
 
-func (c *Core) workerPoolSorter(period time.Duration) {
+func (c *Core) workerPoolSorter(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolSorter]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Info("stopped")
+		log.Infof(" stopped\n")
+		ticker.Stop()
 	}()
+
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// construct pool slice for API access
@@ -268,16 +273,18 @@ func (c *Core) workerPoolSorter(period time.Duration) {
 	}
 }
 
-func (c *Core) workerPoolDebug(period time.Duration) {
+func (c *Core) workerPoolDebug(ctx context.Context, period time.Duration) {
 	log := logger.Log.WithField("context", "[workerPoolDebug]")
 	log.Info("started")
 	ticker := time.NewTicker(period)
 	defer func() {
-		log.Info("stopped")
+		log.Infof(" stopped\n")
+		ticker.Stop()
 	}()
+
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// send random msg

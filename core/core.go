@@ -20,7 +20,6 @@ import (
 )
 
 type Core struct {
-	ctx     context.Context
 	mu      *sync.Mutex
 	Cfg     *config.Config
 	cli     *client.Client
@@ -56,7 +55,6 @@ type Core struct {
 
 func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s storage.PoolRepository, broadcastCh chan notificator.Msg) *Core {
 	return &Core{
-		ctx:         ctx,
 		mu:          &sync.Mutex{},
 		Cfg:         cfg,
 		cli:         cli,
@@ -75,7 +73,7 @@ func NewCore(ctx context.Context, cfg *config.Config, cli *client.Client, s stor
 	}
 }
 
-func (c *Core) Start() {
+func (c *Core) Start(ctx context.Context) {
 	log := logger.Log.WithField("context", "[core]")
 	if os.Getenv("DRY") == "1" {
 		return
@@ -91,22 +89,22 @@ func (c *Core) Start() {
 		c.height = info.Blocks
 	}
 
-	go c.workerParserBlocks(3 * time.Second)
-	go c.workerBlocksProcessor(1 * time.Second)
+	go c.workerParserBlocks(ctx, 3*time.Second)
+	go c.workerBlocksProcessor(ctx, 1*time.Second)
 
 	// make a batch of parsers
 	// each parse makes a new RPC connection on every job
 	for i := 0; i < c.Cfg.RpcLimit; i++ {
-		go c.workerTxParser(i + 1)
+		go c.workerTxParser(ctx, i+1)
 	}
 
 	if os.Getenv("DEBUG") == "WS" {
-		go c.workerPoolDebug(1 * time.Second)
+		go c.workerPoolDebug(ctx, 1*time.Second)
 		return
 	}
-	go c.workerPoolPuller(1 * time.Second)
-	go c.workerPoolSorter(1 * time.Second)
-	go c.workerPoolSizeHistory(5 * time.Minute)
+	go c.workerPoolPuller(ctx, 1*time.Second)
+	go c.workerPoolSorter(ctx, 1*time.Second)
+	go c.workerPoolSizeHistory(ctx, 5*time.Minute)
 }
 
 func (c *Core) GetNodeInfo() (*info.Info, error) {
