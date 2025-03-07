@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/1F47E/go-feesh/entity/btc/block"
@@ -22,7 +23,7 @@ type RPCRequest struct {
 	Jsonrpc string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
 	Params  interface{} `json:"params"`
-	Id      int         `json:"id"`
+	Id      interface{} `json:"id"`
 }
 
 /*
@@ -51,11 +52,12 @@ type RPCResponse struct {
 }
 
 func NewRPCRequest(method string, params interface{}) *RPCRequest {
+	// GetBlock.io uses JsonRPC 2.0 format
 	return &RPCRequest{
-		Jsonrpc: "1.0",
+		Jsonrpc: "2.0",
 		Method:  method,
 		Params:  params,
-		Id:      1,
+		Id:      "getblock.io",
 	}
 }
 
@@ -66,6 +68,7 @@ type Client struct {
 	user        string
 	password    string
 	useGetblock bool
+	debug       bool
 	retries     int
 }
 
@@ -83,6 +86,12 @@ func NewClient(host, user, password string) (*Client, error) {
 		useGetblock = true
 	}
 
+	// Check for RPC_DEBUG environment variable
+	debug := os.Getenv("RPC_DEBUG") == "1"
+	if debug {
+		log.Log.Info("RPC debug logging enabled")
+	}
+
 	return &Client{
 		client: &http.Client{
 			Timeout: time.Second * 10, // getrawmempool verbose can take a long fucking time
@@ -91,20 +100,39 @@ func NewClient(host, user, password string) (*Client, error) {
 		user:        user,
 		password:    password,
 		useGetblock: useGetblock,
+		debug:       debug,
 		retries:     10,
 	}, nil
 }
 
 func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	l := log.Log.WithField("context", "[RPC]")
+
+	if c.debug {
+		l.Info("============= RPC REQUEST =============")
+		l.Infof("Host: %s", c.host)
+		l.Infof("Method: %s", r.Method)
+		l.Infof("UseGetblock: %v", c.useGetblock)
+	}
+
 	jr, err := json.Marshal(r)
 	if err != nil {
+		l.Errorf("Error marshaling request: %v", err)
 		return nil, err
 	}
+
+	// Debug log of the request payload
+	if c.debug {
+		l.Infof("Request payload: %s", string(jr))
+	} else {
+		l.Debugf("Sending request to %s: %s", c.host, string(jr))
+	}
+
 	bodyReader := bytes.NewReader(jr)
 
 	req, err := http.NewRequest(http.MethodPost, c.host, bodyReader)
 	if err != nil {
+		l.Errorf("Error creating request: %v", err)
 		return nil, err
 	}
 
@@ -113,11 +141,28 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 		req.SetBasicAuth(c.user, c.password)
 	}
 
+	// Add common headers required by most APIs
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "go-feesh/1.0")
+
+	// For GetBlock, add some additional headers that might be needed
+	if c.useGetblock {
+		// Some providers require explicitly setting these headers
+		req.Header.Set("Accept", "application/json")
+	}
+
 	req.Close = true
+
+	if c.debug {
+		l.Info("============= REQUEST HEADERS =============")
+		for k, v := range req.Header {
+			l.Infof("%s: %v", k, v)
+		}
+	}
 
 	resp := new(http.Response)
 	for i := 0; i <= c.retries; i++ {
+		l.Debugf("Making API request attempt %d/%d", i+1, c.retries+1)
 		resp, err = c.client.Do(req)
 		if err != nil {
 			// retry on 5xx
@@ -128,27 +173,76 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 				time.Sleep(time.Duration(100*i+rand.Intn(300)) * time.Millisecond)
 				continue
 			}
-			log.Log.Errorf("fatal error: %s", err.Error())
+			l.Errorf("Network error: %s", err.Error())
 			return nil, err
 		}
+
+		// Handle 403 errors specially with more diagnostics
+		if resp.StatusCode == 403 {
+			l.Errorf("HTTP 403 Forbidden - API access denied. This could be due to:")
+			l.Errorf("1. Invalid API key or token in URL")
+			l.Errorf("2. Requested method (%s) not supported by GetBlock", r.Method)
+			l.Errorf("3. IP address restrictions")
+
+			// Try to read the response body for any helpful error messages
+			responseData, readErr := io.ReadAll(resp.Body)
+			if readErr == nil && len(responseData) > 0 {
+				l.Errorf("Response body: %s", string(responseData))
+			}
+			resp.Body.Close()
+
+			// Return a more specific error
+			return nil, fmt.Errorf("API access denied (HTTP 403) when calling method: %s", r.Method)
+		}
+
+		if c.debug {
+			l.Infof("Response status: %s", resp.Status)
+			l.Info("============= RESPONSE HEADERS =============")
+			for k, v := range resp.Header {
+				l.Infof("%s: %v", k, v)
+			}
+		} else {
+			l.Debugf("Received response with status: %s", resp.Status)
+		}
+
 		defer resp.Body.Close()
 		break
 	}
 
-	// debug
-	// read response to bytes
+	// Read response to bytes
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Log.Errorf("RPC cli reading body err: %s", err.Error())
+		l.Errorf("Error reading response body: %s", err.Error())
 		return nil, err
+	}
+
+	// Debug log the response data
+	if c.debug {
+		l.Info("============= RESPONSE BODY =============")
+		l.Info(string(data))
+	} else {
+		l.Debugf("Received response body: %s", string(data))
+	}
+
+	// Check if response body is empty
+	if len(data) == 0 {
+		l.Error("Empty response body received")
+		return nil, fmt.Errorf("empty response from server")
 	}
 
 	var ret RPCResponse
 	err = json.Unmarshal(data, &ret)
 
 	if err != nil {
-		log.Log.Errorf("RPC cli parsing json err: %s\nbody data: %s", err.Error(), string(data))
+		l.Errorf("Error parsing JSON response: %s\nBody data: %s", err.Error(), string(data))
 		return nil, err
+	}
+
+	// Check for errors in the response
+	if ret.Error != nil {
+		errorDetails, _ := json.Marshal(ret.Error)
+		l.Errorf("RPC error in response: %s", string(errorDetails))
+		return nil, fmt.Errorf("RPC error: %s", string(errorDetails))
 	}
 
 	return &ret, nil
@@ -157,30 +251,79 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 // getinfo request
 // curl -X POST -H 'Content-Type: application/json' -u 'rpcuser:rpcpass' -d '{"jsonrpc":"1.0","method":"getinfo","params":[],"id":1}' http://localhost:18334
 func (c *Client) GetInfo() (*info.Info, error) {
-	r := NewRPCRequest("getinfo", []interface{}{})
+	l := log.Log.WithField("context", "[RPC.GetInfo]")
+	l.Debug("Getting blockchain info")
+
+	// Try getblockchaininfo first (for newer Bitcoin Core and services like GetBlock)
+	r := NewRPCRequest("getblockchaininfo", []interface{}{})
 	data, err := c.doRequest(r)
 	if err != nil {
-		return nil, err
+		// If getblockchaininfo fails, try the legacy getinfo method
+		l.Warnf("getblockchaininfo failed, trying legacy getinfo: %v", err)
+		r = NewRPCRequest("getinfo", []interface{}{})
+		data, err = c.doRequest(r)
+		if err != nil {
+			l.Errorf("Both getblockchaininfo and getinfo failed: %v", err)
+			return nil, err
+		}
 	}
 
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
+		l.Errorf("Unexpected result type: %T", data.Result)
 		return nil, fmt.Errorf("unexpected type for result")
 	}
+
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
+		l.Errorf("Error marshalling result back to JSON: %v", err)
 		return nil, err
 	}
 
-	// parse into struct
-	info := new(info.Info)
-	err = json.Unmarshal(rawJson, &info)
+	// First try parsing as the standard info format
+	nodeInfo := new(info.Info)
+	err = json.Unmarshal(rawJson, &nodeInfo)
+
 	if err != nil {
-		return nil, err
+		// If that fails, try parsing as blockchain info and convert
+		l.Warnf("Failed to parse response as Info, trying blockchain info format: %v", err)
+		var blockchainInfo struct {
+			Chain                string  `json:"chain"`
+			Blocks               int     `json:"blocks"`
+			Headers              int     `json:"headers"`
+			BestBlockHash        string  `json:"bestblockhash"`
+			Difficulty           float64 `json:"difficulty"`
+			MedianTime           int     `json:"mediantime"`
+			VerificationProgress float64 `json:"verificationprogress"`
+			InitialBlockDownload bool    `json:"initialblockdownload"`
+			ChainWork            string  `json:"chainwork"`
+			SizeOnDisk           int64   `json:"size_on_disk"`
+			Pruned               bool    `json:"pruned"`
+		}
+
+		if err := json.Unmarshal(rawJson, &blockchainInfo); err != nil {
+			l.Errorf("Failed to parse response as blockchain info: %v", err)
+			return nil, err
+		}
+
+		// Convert to the legacy info format
+		nodeInfo = &info.Info{
+			Version:         0, // Not available in blockchaininfo
+			ProtocolVersion: 0, // Not available in blockchaininfo
+			Blocks:          blockchainInfo.Blocks,
+			Timeoffset:      0,  // Not available in blockchaininfo
+			Connections:     0,  // Not available in blockchaininfo
+			Proxy:           "", // Not available in blockchaininfo
+			Difficulty:      blockchainInfo.Difficulty,
+			Testnet:         blockchainInfo.Chain != "main",
+			Relayfee:        0,  // Not available in blockchaininfo
+			Errors:          "", // Not available in blockchaininfo
+		}
 	}
-	// utils.PrintStruct(info)
-	return info, nil
+
+	l.Debugf("Successfully parsed info, height: %d", nodeInfo.Blocks)
+	return nodeInfo, nil
 }
 
 // get best block
@@ -197,12 +340,91 @@ type ResponseGetBestBlock struct {
 }
 
 func (c *Client) GetBestBlock() (*ResponseGetBestBlock, error) {
-	r := NewRPCRequest("getbestblock", []interface{}{})
+	l := log.Log.WithField("context", "[RPC.GetBestBlock]")
+
+	// First try getbestblockhash (widely supported including by GetBlock)
+	l.Debug("Getting best block hash")
+	r := NewRPCRequest("getbestblockhash", []interface{}{})
 	data, err := c.doRequest(r)
+
 	if err != nil {
-		return nil, err
+		l.Warnf("getbestblockhash failed, trying fallback to getblockchaininfo: %v", err)
+
+		// Try getblockchaininfo as fallback
+		r = NewRPCRequest("getblockchaininfo", []interface{}{})
+		data, err = c.doRequest(r)
+		if err != nil {
+			l.Errorf("Both getbestblockhash and getblockchaininfo failed: %v", err)
+
+			// As a last resort, try the original getbestblock method
+			r = NewRPCRequest("getbestblock", []interface{}{})
+			data, err = c.doRequest(r)
+			if err != nil {
+				l.Errorf("All block query methods failed: %v", err)
+				return nil, fmt.Errorf("failed to get best block info: %v", err)
+			}
+		}
+
+		// If we got blockchaininfo, extract what we need
+		if r.Method == "getblockchaininfo" {
+			// Parse blockchaininfo
+			if _, ok := data.Result.(map[string]interface{}); !ok {
+				return nil, fmt.Errorf("unexpected type for result")
+			}
+
+			rawJson, _ := json.Marshal(data.Result)
+			var blockchainInfo struct {
+				Blocks        int    `json:"blocks"`
+				BestBlockHash string `json:"bestblockhash"`
+			}
+
+			if err := json.Unmarshal(rawJson, &blockchainInfo); err != nil {
+				return nil, err
+			}
+
+			// Create the response from blockchaininfo data
+			return &ResponseGetBestBlock{
+				Hash:   blockchainInfo.BestBlockHash,
+				Height: blockchainInfo.Blocks,
+			}, nil
+		}
 	}
 
+	// If we got here with getbestblockhash, we need to get the height separately
+	if r.Method == "getbestblockhash" {
+		// We have the hash, but need to get the height
+		hash, ok := data.Result.(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected result type for getbestblockhash")
+		}
+
+		// Get the block header to find its height
+		r = NewRPCRequest("getblockheader", []interface{}{hash})
+		headerData, err := c.doRequest(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block header: %v", err)
+		}
+
+		if _, ok := headerData.Result.(map[string]interface{}); !ok {
+			return nil, fmt.Errorf("unexpected type for block header result")
+		}
+
+		rawJson, _ := json.Marshal(headerData.Result)
+		var blockHeader struct {
+			Height int `json:"height"`
+		}
+
+		if err := json.Unmarshal(rawJson, &blockHeader); err != nil {
+			return nil, err
+		}
+
+		return &ResponseGetBestBlock{
+			Hash:   hash,
+			Height: blockHeader.Height,
+		}, nil
+	}
+
+	// For the original getbestblock method, parse directly
 	// check type of result
 	if _, ok := data.Result.(map[string]interface{}); !ok {
 		return nil, fmt.Errorf("unexpected type for result")
@@ -210,7 +432,7 @@ func (c *Client) GetBestBlock() (*ResponseGetBestBlock, error) {
 	// Convert back to raw JSON
 	rawJson, err := json.Marshal(data.Result)
 	if err != nil {
-		log.Log.Errorf("Error marshalling back to raw JSON: %v", err)
+		l.Errorf("Error marshalling back to raw JSON: %v", err)
 		return nil, err
 	}
 
@@ -218,7 +440,7 @@ func (c *Client) GetBestBlock() (*ResponseGetBestBlock, error) {
 	var info ResponseGetBestBlock
 	err = json.Unmarshal(rawJson, &info)
 	if err != nil {
-		log.Log.Errorf("error unmarshalling response: %v", err)
+		l.Errorf("error unmarshalling response: %v", err)
 		return nil, err
 	}
 	return &info, nil
