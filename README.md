@@ -2,9 +2,6 @@
 ## [![Build Status](https://github.com/1F47E/go-feesh/actions/workflows/go.yml/badge.svg)](https://github.com/1F47E/go-feesh/actions/workflows/go.yml)  [![Go Report Card](https://goreportcard.com/badge/1F47E/go-feesh)](https://goreportcard.com/report/1F47E/go-feesh)
 
 
-## DEMO
-https://demo.feesh.io/
-
 
 ## ENVS:
 ```                                           
@@ -13,6 +10,7 @@ export RPC_PASS='rpcpass'
 export RPC_HOST='http://localhost:18334'
 export RPC_LIMIT=420
 export API_HOST='localhost:8080'
+export BLOCKS_PARSING_DEPTH=100
 ```                                           
 
 ## System requierments

@@ -16,7 +16,6 @@ import (
 var buckets = []uint{2, 3, 4, 5, 6, 8, 10, 15, 25, 35, 50, 70, 85, 100, 125, 150, 200, 250, 300, 350, 400, 450, 499, 500}
 
 // var poolSizeHistoryTimeFrame = 1 * time.Minute
-var poolSizeHistoryTimeFrame = 5 * time.Second
 var poolSizeHistoryLimit = 40
 
 func (c *Core) workerPoolPuller(period time.Duration) {
