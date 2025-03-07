@@ -109,10 +109,10 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 	l := log.Log.WithField("context", "[RPC]")
 
 	if c.debug {
-		l.Info("============= RPC REQUEST =============")
-		l.Infof("Host: %s", c.host)
-		l.Infof("Method: %s", r.Method)
-		l.Infof("UseGetblock: %v", c.useGetblock)
+		l.Debug("============= RPC REQUEST =============")
+		l.Debugf("Host: %s", c.host)
+		l.Debugf("Method: %s", r.Method)
+		l.Debugf("UseGetblock: %v", c.useGetblock)
 	}
 
 	jr, err := json.Marshal(r)
@@ -123,8 +123,7 @@ func (c *Client) doRequest(r *RPCRequest) (*RPCResponse, error) {
 
 	// Debug log of the request payload
 	if c.debug {
-		l.Infof("Request payload: %s", string(jr))
-	} else {
+		l.Debugf("Request payload: %s", string(jr))
 		l.Debugf("Sending request to %s: %s", c.host, string(jr))
 	}
 
